@@ -171,20 +171,16 @@ let todosReportes = [];
 let usuarioBanId  = null;
 let filtroActivo  = '';
 
-document.addEventListener('DOMContentLoaded', () => {
-  // Esperar a que Supabase resuelva la sesión via onAuthStateChange
-  // antes de verificar el rol. Esto evita el race condition de carga.
+document.addEventListener('DOMContentLoaded', async () => {
+  // Esperar a que supabase.js termine de inicializar el cliente
+  await new Promise(resolve => setTimeout(resolve, 100));
+
   const db = getClient();
   if (!db || esModoDemo()) { mostrarNoAuth(); return; }
 
-  // onAuthStateChange dispara con el estado inicial de sesión
-  db.auth.onAuthStateChange(async (_event, session) => {
-    if (session?.user) {
-      await verificarAdmin(session.user);
-    } else {
-      mostrarNoAuth();
-    }
-  });
+  const { data: { user }, error } = await db.auth.getUser();
+  if (error || !user) { mostrarNoAuth(); return; }
+  await verificarAdmin(user);
 });
 
 async function verificarAdmin(user) {
