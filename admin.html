@@ -172,19 +172,25 @@ let usuarioBanId  = null;
 let filtroActivo  = '';
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Usar onAuthChange para evitar race condition (mismo patrón que reportar.html)
-  verificarAdmin();
-  onAuthChange(() => verificarAdmin());
+  // Esperar a que Supabase resuelva la sesión via onAuthStateChange
+  // antes de verificar el rol. Esto evita el race condition de carga.
+  const db = getClient();
+  if (!db || esModoDemo()) { mostrarNoAuth(); return; }
+
+  // onAuthStateChange dispara con el estado inicial de sesión
+  db.auth.onAuthStateChange(async (_event, session) => {
+    if (session?.user) {
+      await verificarAdmin(session.user);
+    } else {
+      mostrarNoAuth();
+    }
+  });
 });
 
-async function verificarAdmin() {
+async function verificarAdmin(user) {
   const db = getClient();
-  // Consultar directamente si hay sesión activa
-  if (!db) { mostrarNoAuth(); return; }
+  if (!db || !user) { mostrarNoAuth(); return; }
   try {
-    const { data: { user } } = await db.auth.getUser();
-    if (!user) { mostrarNoAuth(); return; }
-    // Consultar rol directamente en la tabla usuarios
     const { data: perfil } = await db.from('usuarios').select('rol').eq('id', user.id).single();
     const esAdminReal = perfil?.rol === 'admin' || user.email === ADMIN_EMAIL;
     if (!esAdminReal) { mostrarNoAuth(); return; }
