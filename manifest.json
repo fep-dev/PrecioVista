@@ -1,0 +1,37 @@
+{
+  "name": "PrecioVista",
+  "short_name": "PrecioVista",
+  "description": "Comparador colaborativo de precios en supermercados y kioscos",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#080B12",
+  "theme_color": "#080B12",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": [
+    "shopping",
+    "finance",
+    "utilities"
+  ],
+  "lang": "es",
+  "screenshots": []
+}

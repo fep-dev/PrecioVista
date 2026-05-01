@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buscar precios — PrecioVista</title>
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  .search-bar-page {
+    background: var(--bg-1); border-bottom: 1px solid var(--border);
+    padding: 1rem 0;
+  }
+  .search-bar-inner {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  }
+  .search-bar-inner .search-wrap { flex: 1; min-width: 220px; max-width: 100%; }
+
+  .results-header { padding: 1.5rem 0 0.5rem; display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  .results-title  { font-family: var(--font-display); font-size: 1.1rem; font-weight: 700; }
+  .results-sub    { font-size: 0.82rem; color: var(--text-3); }
+
+  .filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1rem; }
+  .filter-btn {
+    padding: 5px 14px; border-radius: 99px; font-size: 0.8rem; font-weight: 500;
+    background: var(--bg-3); border: 1px solid var(--border);
+    color: var(--text-2); cursor: pointer; transition: var(--t);
+  }
+  .filter-btn:hover  { border-color: var(--wood); color: var(--text-1); }
+  .filter-btn.active { background: rgba(200,168,130,0.1); border-color: var(--wood); color: var(--wood-light); }
+
+  .product-chip {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg-2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 6px 12px;
+    cursor: pointer; transition: var(--t); font-size: 0.84rem;
+  }
+  .product-chip:hover { border-color: var(--wood); background: var(--bg-3); }
+  .product-chip.active { border-color: var(--wood); background: rgba(200,168,130,0.08); }
+  .products-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1.2rem; }
+
+  /* Popup del mapa */
+  .leaflet-popup-content-wrapper {
+    background: var(--bg-2) !important; color: var(--text-1) !important;
+    border: 1px solid var(--border-strong) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--shadow-card) !important;
+  }
+  .leaflet-popup-tip { background: var(--bg-2) !important; }
+  .map-popup-title { font-family: var(--font-display); font-weight: 600; margin-bottom: 4px; }
+  .map-popup-info  { font-size: 0.8rem; color: var(--text-2); }
+  .map-popup-price { font-family: var(--font-display); font-weight: 700; color: var(--green-light); margin-top:4px; }
+</style>
+</head>
+<body>
+
+<!-- ── Nav ── -->
+<nav class="nav">
+  <a href="../index.html" class="nav-logo">
+    <img src="../assets/logo.png" alt="PrecioVista" class="nav-logo-img">
+    PrecioVista
+  </a>
+  <div class="nav-links">
+    <a class="nav-link" href="../index.html">Inicio</a>
+    <a class="nav-link active" href="buscar.html">Buscar</a>
+    <a class="nav-link" href="reportar.html">Reportar precio</a>
+    <div class="nav-location" onclick="abrirUbicacion()">
+      <div class="nav-location-dot"></div>
+      <span id="nav-location-text">Argentina</span>
+    </div>
+  </div>
+  <div class="nav-actions">
+    <span id="nav-user" style="display:none;font-size:0.82rem;color:var(--text-2)"></span>
+    <button id="btn-logout" style="display:none" class="nav-btn secondary" onclick="cerrarSesion()">Salir</button>
+    <button id="btn-auth" class="nav-btn" onclick="abrirLogin()">Ingresar</button>
+  </div>
+</nav>
+
+<!-- ── Barra de búsqueda ── -->
+<div class="search-bar-page">
+  <div class="container">
+    <div class="search-bar-inner">
+      <div class="search-wrap" style="margin:0">
+        <span class="search-icon">🔍</span>
+        <input type="text" class="search-input" id="page-search" placeholder="Buscá un producto...">
+        <button class="search-btn" onclick="ejecutarBusqueda()">Buscar</button>
+      </div>
+      <select class="form-input form-select" id="filtro-tipo" style="width:160px" onchange="aplicarFiltros()">
+        <option value="">Todos los tipos</option>
+        <option value="super">Supermercados</option>
+        <option value="kiosk">Kioscos</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<!-- ── Contenido ── -->
+<div class="container">
+
+  <!-- Estado: sin búsqueda -->
+  <div id="estado-inicio">
+    <div style="padding:2rem 0">
+      <p style="font-size:0.9rem;margin-bottom:1rem;color:var(--text-2)">Productos más buscados</p>
+      <div class="products-list" id="productos-populares"></div>
+    </div>
+    <div style="padding:1rem 0 2rem">
+      <p style="font-size:0.9rem;margin-bottom:1rem;color:var(--text-2)">Filtrar por categoría</p>
+      <div class="filter-row" id="filtros-categoria"></div>
+    </div>
+  </div>
+
+  <!-- Estado: resultados -->
+  <div id="estado-resultados" style="display:none">
+    <div class="results-header">
+      <div>
+        <h1 class="results-title" id="results-title">Resultados</h1>
+        <p class="results-sub" id="results-sub"></p>
+      </div>
+      <button class="btn btn-wood btn-sm" onclick="irAReportar()" style="font-size:0.8rem">
+        + Reportar este precio
+      </button>
+    </div>
+
+    <div class="filter-row" id="filtros-orden">
+      <button class="filter-btn active" onclick="ordenar('precio','asc',this)">💰 Menor precio</button>
+      <button class="filter-btn" onclick="ordenar('precio','desc',this)">📈 Mayor precio</button>
+      <button class="filter-btn" onclick="ordenar('reportes','desc',this)">⭐ Más reportado</button>
+    </div>
+
+    <div class="result-layout">
+      <!-- Ranking -->
+      <div>
+        <div class="ranking-card" id="ranking-card">
+          <div class="ranking-header">
+            <span class="ranking-title" id="ranking-title">Cargando precios...</span>
+            <span class="ranking-sub" id="ranking-sub"></span>
+          </div>
+          <div id="ranking-list">
+            <!-- Se rellena por JS -->
+          </div>
+        </div>
+
+        <!-- Historial -->
+        <div class="chart-card" id="chart-card" style="display:none">
+          <div class="chart-header">
+            <span class="chart-title">📈 Evolución de precio — últimos 30 días</span>
+            <span class="chart-badge" id="chart-badge">Seleccioná un comercio</span>
+          </div>
+          <canvas id="price-chart" height="120"></canvas>
+        </div>
+      </div>
+
+      <!-- Mapa -->
+      <div>
+        <div class="map-card">
+          <div class="map-header">
+            <span class="map-header-icon">📍</span>
+            <span class="map-title">Comercios cercanos</span>
+          </div>
+          <div id="map"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Estado: loading -->
+  <div id="estado-loading" style="display:none;text-align:center;padding:4rem 0">
+    <div class="spinner" style="margin:0 auto 1rem;width:32px;height:32px;border-width:3px"></div>
+    <p style="color:var(--text-2)">Buscando precios...</p>
+  </div>
+
+  <!-- Estado: sin resultados -->
+  <div id="estado-vacio" style="display:none">
+    <div class="empty-state">
+      <span class="empty-state-icon">🔍</span>
+      <div class="empty-state-title">No encontramos resultados</div>
+      <p class="empty-state-desc">Probá con otro nombre o sé el primero en reportar este precio</p>
+      <button class="btn btn-wood btn-sm" style="margin-top:1rem;width:auto;padding:10px 24px" onclick="irAReportar()">
+        Reportar primer precio
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Footer ── -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-inner">
+      <p class="footer-copy">© 2026 PrecioVista. CC BY-NC-SA 4.0.</p>
+      <div class="footer-links">
+        <a class="footer-link" href="../index.html">Inicio</a>
+        <a class="footer-link" href="reportar.html">Reportar</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="../js/data.js"></script>
+<script src="../js/supabase.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/app.js"></script>
+<script>
+// ── Variables de página ──────────────────────────────────────
+let preciosActuales  = [];
+let productoActivo   = null;
+let mapInstance      = null;
+let chartInstance    = null;
+let marcadores       = [];
+
+// ── Inicializar ──────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  renderProductosPopulares();
+  renderFiltrosCategorias();
+
+  const q = getParam('q');
+  if (q) {
+    document.getElementById('page-search').value = q;
+    ejecutarBusqueda();
+  }
+
+  document.getElementById('page-search').addEventListener('keydown', e => {
+    if (e.key === 'Enter') ejecutarBusqueda();
+  });
+});
+
+function renderProductosPopulares() {
+  const cont = document.getElementById('productos-populares');
+  if (!cont) return;
+  cont.innerHTML = PRODUCTOS_DEMO.slice(0, 8).map(p => `
+    <div class="product-chip" onclick="seleccionarProducto('${p.id}','${p.nombre}')">
+      <span>${p.emoji}</span><span>${p.nombre}</span>
+    </div>
+  `).join('');
+}
+
+function renderFiltrosCategorias() {
+  const cont = document.getElementById('filtros-categoria');
+  if (!cont) return;
+  cont.innerHTML = CATEGORIAS.map(c => `
+    <button class="filter-btn" onclick="filtrarCategoria('${c.id}',this)">
+      ${c.emoji} ${c.nombre}
+    </button>
+  `).join('');
+}
+
+async function ejecutarBusqueda() {
+  const query = document.getElementById('page-search')?.value.trim();
+  if (!query) return;
+  mostrarEstado('loading');
+
+  const { data: productos } = await buscarProductos(query);
+  if (!productos || productos.length === 0) { mostrarEstado('vacio'); return; }
+
+  // Tomar el primer producto como activo
+  productoActivo = productos[0];
+  await cargarPrecios(productoActivo);
+}
+
+async function seleccionarProducto(id, nombre) {
+  productoActivo = PRODUCTOS_DEMO.find(p => p.id === id) || { id, nombre };
+  document.getElementById('page-search').value = nombre;
+  await cargarPrecios(productoActivo);
+}
+
+async function cargarPrecios(producto) {
+  mostrarEstado('loading');
+  const paisId     = localStorage.getItem('pv_pais') || 'ar';
+  const provinciaId = localStorage.getItem('pv_provincia') || '';
+
+  const { data, demo } = await obtenerPrecios(producto.id, paisId, provinciaId);
+
+  if (!data || data.length === 0) { mostrarEstado('vacio'); return; }
+
+  preciosActuales = data;
+  mostrarEstado('resultados');
+  renderResultados(producto, data, getPais(paisId));
+  iniciarMapa(data);
+  if (demo) mostrarToast('Modo demo: conectá Supabase para ver datos reales', 'info');
+}
+
+function renderResultados(producto, precios, pais) {
+  document.getElementById('results-title').textContent =
+    `${producto.emoji || '🛒'} ${producto.nombre}`;
+  document.getElementById('results-sub').textContent =
+    `${precios.length} comercios · ${pais.bandera} ${pais.nombre}`;
+  document.getElementById('ranking-title').textContent =
+    `Ranking de precios — ${producto.nombre}`;
+  document.getElementById('ranking-sub').textContent =
+    `${precios.length} resultados`;
+  renderRanking(precios, pais.simbolo);
+}
+
+function renderRanking(precios, simbolo) {
+  const lista  = document.getElementById('ranking-list');
+  const mejor  = precios[0]?.precio || 1;
+  const peor   = precios[precios.length - 1]?.precio || 1;
+  const rango  = peor - mejor || 1;
+  const rankClasses = ['gold','silver','bronze'];
+
+  lista.innerHTML = precios.map((item, i) => {
+    const cadena  = item.cadena || {};
+    const esBest  = i === 0;
+    const fill    = Math.round(((item.precio - mejor) / rango) * 90 + 10);
+    const diff    = i === 0 ? '¡Más barato!' : `+${formatPrecio(item.precio - mejor, simbolo)} vs. más barato`;
+    const color   = esBest ? 'var(--green)' : i === 1 ? 'var(--blue)' : i === 2 ? 'var(--wood)' : 'var(--text-3)';
+    const rankCls = rankClasses[i] || '';
+
+    const logoHtml = cadena.logo
+      ? `<div class="price-logo"><img src="${cadena.logo}" alt="${cadena.nombre}" onerror="this.parentElement.outerHTML='<div class=price-logo-fallback style=background:${cadena.color}>${cadena.iniciales}</div>'"></div>`
+      : `<div class="price-logo-fallback" style="background:${cadena.color || '#2563EB'}">${cadena.iniciales || '?'}</div>`;
+
+    return `
+    <div class="price-item ${esBest ? 'best' : ''}" onclick="mostrarHistorial(${i})">
+      <span class="price-rank ${rankCls}">${i + 1}</span>
+      ${logoHtml}
+      <div class="price-info">
+        <div class="price-store-nm">${cadena.nombre || 'Comercio'}</div>
+        <div class="price-meta">${item.hace} · ${item.reportes} reportes</div>
+        <div class="price-bar-bg">
+          <div class="price-bar-fill" style="width:${fill}%;background:${color}"></div>
+        </div>
+      </div>
+      <div class="price-val">
+        <div class="price-amount ${esBest ? 'best' : ''}">${formatPrecio(item.precio, simbolo)}</div>
+        <div class="price-diff ${esBest ? 'save' : ''}">${diff}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function mostrarHistorial(idx) {
+  const item    = preciosActuales[idx];
+  if (!item) return;
+  const paisId  = localStorage.getItem('pv_pais') || 'ar';
+  const pais    = getPais(paisId);
+  const { data } = await obtenerHistorial(productoActivo?.id, item.cadena?.id);
+
+  const chartCard = document.getElementById('chart-card');
+  chartCard.style.display = 'block';
+  document.getElementById('chart-badge').textContent = item.cadena?.nombre || 'Comercio';
+
+  const canvas = document.getElementById('price-chart');
+  if (chartInstance) chartInstance.destroy();
+
+  // Convertir datos
+  let labels, valores;
+  if (data.labels) {
+    labels  = data.labels;
+    valores = data.datasets ? Object.values(data.datasets)[0] : [];
+  } else {
+    labels  = data.map(d => new Date(d.created_at).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit' }));
+    valores = data.map(d => d.precio);
+  }
+
+  chartInstance = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: `${item.cadena?.nombre} (${pais.simbolo})`,
+        data:  valores,
+        borderColor:     '#C8A882',
+        backgroundColor: 'rgba(200,168,130,0.1)',
+        borderWidth:     2,
+        pointRadius:     3,
+        pointBackgroundColor: '#C8A882',
+        tension: 0.4, fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: '#9AA3BE', font: { family: 'DM Sans' } } },
+        tooltip: { callbacks: { label: ctx => `${pais.simbolo}${ctx.parsed.y.toLocaleString('es-AR')}` } }
+      },
+      scales: {
+        x: { ticks: { color: '#5C6480', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#5C6480', font: { size: 10 }, callback: v => `${pais.simbolo}${v.toLocaleString()}` }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+  chartCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ── Mapa ────────────────────────────────────────────────────
+function iniciarMapa(precios) {
+  if (!precios || precios.length === 0) return;
+
+  const centro = [precios[0].lat, precios[0].lng];
+
+  if (mapInstance) {
+    mapInstance.remove();
+    mapInstance = null;
+  }
+
+  mapInstance = L.map('map', { zoomControl: true }).setView(centro, 13);
+
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap © CARTO',
+    maxZoom: 19
+  }).addTo(mapInstance);
+
+  marcadores = [];
+  precios.forEach((item, i) => {
+    if (!item.lat || !item.lng) return;
+    const cadena = item.cadena || {};
+    const esBest = i === 0;
+    const color  = esBest ? '#10B981' : i === 1 ? '#3B82F6' : '#C8A882';
+    const pais   = getPais(localStorage.getItem('pv_pais') || 'ar');
+
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="
+        background:${color};color:white;
+        font-family:'Sora',sans-serif;font-size:9px;font-weight:700;
+        padding:3px 7px;border-radius:99px;
+        box-shadow:0 2px 8px rgba(0,0,0,0.5);
+        white-space:nowrap;border:1.5px solid rgba(255,255,255,0.3);
+      ">${cadena.nombre || '?'}</div>`,
+      iconAnchor: [0, 0]
+    });
+
+    const marker = L.marker([item.lat, item.lng], { icon })
+      .addTo(mapInstance)
+      .bindPopup(`
+        <div class="map-popup-title">${cadena.nombre || 'Comercio'}</div>
+        <div class="map-popup-info">📍 ${item.direccion || 'Dirección no disponible'}</div>
+        <div class="map-popup-info">🕐 ${item.horario || 'Horario no disponible'}</div>
+        <div class="map-popup-price">${formatPrecio(item.precio, pais.simbolo)}</div>
+        <a href="comercio.html?id=${cadena.id}&pais=${localStorage.getItem('pv_pais')||'ar'}"
+          style="display:inline-block;margin-top:6px;font-size:0.75rem;color:#C8A882">
+          Ver ficha del comercio →
+        </a>
+      `);
+    marcadores.push(marker);
+  });
+}
+
+// ── Filtros ──────────────────────────────────────────────────
+function ordenar(campo, dir, btn) {
+  document.querySelectorAll('#filtros-orden .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const sorted = [...preciosActuales].sort((a, b) => {
+    if (campo === 'precio') return dir === 'asc' ? a.precio - b.precio : b.precio - a.precio;
+    if (campo === 'reportes') return b.reportes - a.reportes;
+    return 0;
+  });
+  const pais = getPais(localStorage.getItem('pv_pais') || 'ar');
+  renderRanking(sorted, pais.simbolo);
+}
+
+function filtrarCategoria(catId, btn) {
+  document.querySelectorAll('#filtros-categoria .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const prods = PRODUCTOS_DEMO.filter(p => p.categoria === catId);
+  const cont = document.getElementById('productos-populares');
+  if (cont) cont.innerHTML = prods.map(p => `
+    <div class="product-chip" onclick="seleccionarProducto('${p.id}','${p.nombre}')">
+      <span>${p.emoji}</span><span>${p.nombre}</span>
+    </div>
+  `).join('');
+}
+
+function aplicarFiltros() {
+  if (!preciosActuales.length) return;
+  const tipo = document.getElementById('filtro-tipo')?.value;
+  const filtrados = tipo ? preciosActuales.filter(p => p.cadena?.tipo === tipo) : preciosActuales;
+  const pais = getPais(localStorage.getItem('pv_pais') || 'ar');
+  renderRanking(filtrados, pais.simbolo);
+}
+
+// ── Estados ──────────────────────────────────────────────────
+function mostrarEstado(estado) {
+  ['inicio','loading','resultados','vacio'].forEach(s => {
+    const el = document.getElementById(`estado-${s}`);
+    if (el) el.style.display = s === estado ? '' : 'none';
+  });
+}
+
+function recargarResultados() {
+  if (productoActivo) cargarPrecios(productoActivo);
+}
+
+function irAReportar() {
+  if (!estaLogueado()) { abrirLogin(); return; }
+  const q = document.getElementById('page-search')?.value;
+  window.location.href = `reportar.html${q ? '?q=' + encodeURIComponent(q) : ''}`;
+}
+</script>
+
+<!-- ✓ buscar.html — completo -->
+</body>
+</html>

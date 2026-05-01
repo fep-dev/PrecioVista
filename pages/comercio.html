@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ficha del comercio — PrecioVista</title>
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  .detail-grid { display: grid; grid-template-columns: 1fr 360px; gap: 18px; padding: 2rem 0; }
+  @media(max-width:850px){ .detail-grid { grid-template-columns: 1fr; } }
+
+  .info-card {
+    background: var(--bg-2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 16px;
+  }
+  .info-card-header {
+    padding: 1rem 1.4rem; border-bottom: 1px solid var(--border);
+    font-family: var(--font-display); font-size: 0.88rem; font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .info-card-body { padding: 1.2rem 1.4rem; }
+
+  .info-row { display: flex; align-items: flex-start; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
+  .info-row:last-child { border: none; }
+  .info-row-icon { color: var(--wood); flex-shrink: 0; width: 18px; text-align: center; }
+  .info-row-label { color: var(--text-3); min-width: 80px; }
+  .info-row-val   { color: var(--text-1); flex: 1; }
+
+  .product-ranking-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 9px 0; border-bottom: 1px solid var(--border);
+  }
+  .product-ranking-item:last-child { border: none; }
+  .product-emoji { font-size: 1.3rem; }
+  .product-info  { flex: 1; }
+  .product-name  { font-size: 0.88rem; font-weight: 500; color: var(--text-1); }
+  .product-cat   { font-size: 0.75rem; color: var(--text-3); }
+  .product-price { font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; color: var(--wood); }
+
+  .review-item {
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+    font-size: 0.84rem;
+  }
+  .review-item:last-child { border: none; }
+  .review-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .review-name   { font-weight: 600; color: var(--text-1); }
+  .review-date   { font-size: 0.75rem; color: var(--text-3); }
+  .review-text   { color: var(--text-2); line-height: 1.5; }
+
+  .rate-section { padding: 1.2rem 1.4rem; border-top: 1px solid var(--border); }
+  .rate-title   { font-size: 0.85rem; font-weight: 600; color: var(--text-2); margin-bottom: 8px; }
+  .rate-stars   { display: flex; gap: 6px; }
+  .rate-star {
+    font-size: 1.6rem; cursor: pointer; transition: var(--t);
+    color: var(--bg-4);
+  }
+  .rate-star:hover, .rate-star.hover { color: var(--orange); transform: scale(1.1); }
+  .rate-star.active { color: var(--orange); }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="../index.html" class="nav-logo">
+    <img src="../assets/logo.png" alt="PrecioVista" class="nav-logo-img">
+    PrecioVista
+  </a>
+  <div class="nav-links">
+    <a class="nav-link" href="../index.html">Inicio</a>
+    <a class="nav-link" href="buscar.html">Buscar</a>
+    <a class="nav-link" href="reportar.html">Reportar precio</a>
+    <div class="nav-location" onclick="abrirUbicacion()">
+      <div class="nav-location-dot"></div>
+      <span id="nav-location-text">Argentina</span>
+    </div>
+  </div>
+  <div class="nav-actions">
+    <span id="nav-user" style="display:none;font-size:0.82rem;color:var(--text-2)"></span>
+    <button id="btn-logout" style="display:none" class="nav-btn secondary" onclick="cerrarSesion()">Salir</button>
+    <button id="btn-auth" class="nav-btn" onclick="abrirLogin()">Ingresar</button>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- Loading -->
+  <div id="estado-loading" style="text-align:center;padding:4rem 0">
+    <div class="spinner" style="margin:0 auto 1rem;width:32px;height:32px;border-width:3px"></div>
+    <p style="color:var(--text-2)">Cargando ficha...</p>
+  </div>
+
+  <!-- Contenido -->
+  <div id="estado-contenido" style="display:none">
+
+    <!-- Hero del comercio -->
+    <div style="padding:1.5rem 0 0">
+      <a href="buscar.html" style="font-size:0.82rem;color:var(--wood);display:inline-flex;align-items:center;gap:5px;margin-bottom:1rem">
+        ← Volver a resultados
+      </a>
+      <div class="store-detail-hero" id="store-hero">
+        <!-- Se rellena por JS -->
+      </div>
+    </div>
+
+    <div class="detail-grid">
+      <!-- Columna izquierda -->
+      <div>
+        <!-- Productos más buscados -->
+        <div class="info-card">
+          <div class="info-card-header">🛒 Productos más reportados</div>
+          <div class="info-card-body">
+            <div id="productos-top">
+              <div class="empty-state" style="padding:1.5rem 0">
+                <span class="empty-state-icon" style="font-size:1.5rem">📦</span>
+                <p class="empty-state-desc">Aún no hay precios reportados en este comercio</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Reseñas -->
+        <div class="info-card">
+          <div class="info-card-header">⭐ Reseñas de la comunidad</div>
+          <div class="info-card-body">
+            <div id="resenas-list">
+              <div class="empty-state" style="padding:1rem 0">
+                <p class="empty-state-desc">Sé el primero en dejar una reseña</p>
+              </div>
+            </div>
+          </div>
+          <div class="rate-section" id="rate-section" style="display:none">
+            <div class="rate-title">Calificá este comercio</div>
+            <div class="rate-stars" id="rate-stars">
+              <span class="rate-star" data-val="1">★</span>
+              <span class="rate-star" data-val="2">★</span>
+              <span class="rate-star" data-val="3">★</span>
+              <span class="rate-star" data-val="4">★</span>
+              <span class="rate-star" data-val="5">★</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Columna derecha -->
+      <div>
+        <!-- Info del comercio -->
+        <div class="info-card" style="position:sticky;top:80px">
+          <div class="info-card-header">📋 Información</div>
+          <div class="info-card-body" id="store-info-rows">
+            <!-- Se rellena por JS -->
+          </div>
+          <!-- Mapa pequeño -->
+          <div id="store-map" style="height:200px;border-top:1px solid var(--border)"></div>
+          <div style="padding:1rem 1.4rem">
+            <button class="btn btn-wood btn-sm" style="width:100%" onclick="irAReportar()">
+              + Reportar precio aquí
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Error -->
+  <div id="estado-error" style="display:none">
+    <div class="empty-state" style="padding:4rem 0">
+      <span class="empty-state-icon">❌</span>
+      <div class="empty-state-title">Comercio no encontrado</div>
+      <a href="buscar.html" style="color:var(--wood);font-size:0.85rem">← Volver a búsqueda</a>
+    </div>
+  </div>
+
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer-inner">
+      <p class="footer-copy">© 2026 PrecioVista. CC BY-NC-SA 4.0.</p>
+      <div class="footer-links">
+        <a class="footer-link" href="../index.html">Inicio</a>
+        <a class="footer-link" href="buscar.html">Buscar</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="../js/data.js"></script>
+<script src="../js/supabase.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/app.js"></script>
+<script>
+let comercioData  = null;
+let mapComercio   = null;
+let estrellasSel  = 0;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const id     = getParam('id');
+  const paisId = getParam('pais') || localStorage.getItem('pv_pais') || 'ar';
+  if (!id) { mostrarEstadoComercio('error'); return; }
+  await cargarComercio(id, paisId);
+  configurarEstrellas();
+});
+
+async function cargarComercio(id, paisId) {
+  const { data, error } = await obtenerComercio(id);
+  if (error || !data) { mostrarEstadoComercio('error'); return; }
+  comercioData = { ...data, paisId };
+  renderComercio(data, paisId);
+  mostrarEstadoComercio('contenido');
+}
+
+function renderComercio(data, paisId) {
+  const pais   = getPais(paisId);
+  const estrs  = data.estrellas_promedio || 4.0;
+  const llenas = Math.round(estrs);
+
+  // Hero
+  const logoHtml = data.logo
+    ? `<div class="store-detail-logo"><img src="${data.logo}" alt="${data.nombre}" onerror="this.parentElement.outerHTML='<div class=store-detail-logo-fallback style=background:${data.color};color:white>${data.iniciales}</div>'"></div>`
+    : `<div class="store-detail-logo-fallback" style="background:${data.color || '#2563EB'};color:white">${data.iniciales || '?'}</div>`;
+
+  document.getElementById('store-hero').innerHTML = `
+    ${logoHtml}
+    <div>
+      <div class="store-detail-name">${data.nombre}</div>
+      <div class="store-detail-meta">
+        ${data.tipo === 'super' ? '🏪 Supermercado' : '🏬 Kiosco'} ·
+        ${pais.bandera} ${pais.nombre}
+        ${data.provincia ? ` · ${data.provincia}` : ''}
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+        <div class="stars">
+          ${[1,2,3,4,5].map(i => `<span class="star${i>llenas?' empty':''}" >★</span>`).join('')}
+        </div>
+        <span class="stars-count">${estrs.toFixed(1)} · ${data.resenas_count || 0} reseñas</span>
+      </div>
+    </div>
+  `;
+
+  // Info rows
+  document.getElementById('store-info-rows').innerHTML = `
+    <div class="info-row">
+      <span class="info-row-icon">📍</span>
+      <span class="info-row-label">Dirección</span>
+      <span class="info-row-val">${data.direccion || 'No disponible'}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-row-icon">🕐</span>
+      <span class="info-row-label">Horario</span>
+      <span class="info-row-val">${data.horario || 'No disponible'}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-row-icon">🌎</span>
+      <span class="info-row-label">País</span>
+      <span class="info-row-val">${pais.bandera} ${pais.nombre}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-row-icon">💱</span>
+      <span class="info-row-label">Moneda</span>
+      <span class="info-row-val">${pais.moneda} (${pais.simbolo})</span>
+    </div>
+  `;
+
+  // Productos top (demo)
+  const paisSim = pais.simbolo;
+  const bases   = { ar: 850, es: 1.4, cl: 1100, uy: 55, py: 5500, bo: 8, pe: 4.5, mx: 28 };
+  const base    = bases[paisId] || 850;
+  document.getElementById('productos-top').innerHTML = PRODUCTOS_DEMO.slice(0, 5).map(p => {
+    const precio = parseFloat((base * (0.9 + Math.random() * 0.3)).toFixed(2));
+    return `
+    <div class="product-ranking-item">
+      <span class="product-emoji">${p.emoji}</span>
+      <div class="product-info">
+        <div class="product-name">${p.nombre}</div>
+        <div class="product-cat">${CATEGORIAS.find(c=>c.id===p.categoria)?.nombre || ''}</div>
+      </div>
+      <span class="product-price">${formatPrecio(precio, paisSim)}</span>
+    </div>`;
+  }).join('');
+
+  // Reseñas demo
+  const resenasDemo = [
+    { nombre: 'Ana M.', estrellas: 5, texto: 'Precios muy competitivos, siempre bien surtido.', fecha: 'hace 2 días' },
+    { nombre: 'Carlos R.', estrellas: 4, texto: 'Buena atención. A veces hay colas largas.', fecha: 'hace 1 semana' },
+    { nombre: 'María L.', estrellas: 4, texto: 'Conveniente, aunque podría mejorar la sección de frutas.', fecha: 'hace 2 semanas' }
+  ];
+  document.getElementById('resenas-list').innerHTML = resenasDemo.map(r => `
+    <div class="review-item">
+      <div class="review-header">
+        <span class="review-name">${r.nombre}</span>
+        <span class="review-date">${r.fecha}</span>
+      </div>
+      <div style="color:var(--orange);font-size:0.85rem;margin-bottom:3px">${'★'.repeat(r.estrellas)}${'☆'.repeat(5-r.estrellas)}</div>
+      <div class="review-text">${r.texto}</div>
+    </div>
+  `).join('');
+
+  // Mapa
+  if (data.lat && data.lng) {
+    setTimeout(() => iniciarMapaComercio(data), 100);
+  }
+
+  // Mostrar sección de calificación si está logueado
+  const rateSection = document.getElementById('rate-section');
+  if (rateSection && estaLogueado()) rateSection.style.display = 'block';
+}
+
+function iniciarMapaComercio(data) {
+  const mapEl = document.getElementById('store-map');
+  if (!mapEl || mapComercio) return;
+  mapComercio = L.map('store-map', { zoomControl: false, scrollWheelZoom: false }).setView([data.lat, data.lng], 15);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(mapComercio);
+  L.circleMarker([data.lat, data.lng], {
+    radius: 10, fillColor: '#C8A882', color: '#fff',
+    weight: 2, opacity: 1, fillOpacity: 0.9
+  }).addTo(mapComercio).bindPopup(data.nombre).openPopup();
+}
+
+function configurarEstrellas() {
+  const stars = document.querySelectorAll('.rate-star');
+  stars.forEach(star => {
+    star.addEventListener('mouseenter', () => {
+      const val = parseInt(star.dataset.val);
+      stars.forEach(s => s.classList.toggle('hover', parseInt(s.dataset.val) <= val));
+    });
+    star.addEventListener('mouseleave', () => {
+      stars.forEach(s => s.classList.remove('hover'));
+    });
+    star.addEventListener('click', async () => {
+      const val = parseInt(star.dataset.val);
+      estrellasSel = val;
+      stars.forEach(s => s.classList.toggle('active', parseInt(s.dataset.val) <= val));
+      await enviarCalificacion(val);
+    });
+  });
+}
+
+async function enviarCalificacion(estrellas) {
+  const user = getUsuarioLocal();
+  if (!user) { abrirLogin(); return; }
+  const { error } = await calificarComercio(comercioData.id, user.id, estrellas);
+  if (error) { mostrarToast('Error al guardar calificación', 'error'); return; }
+  mostrarToast(`Calificaste con ${estrellas} estrellas ⭐`, 'success');
+}
+
+function mostrarEstadoComercio(estado) {
+  ['loading','contenido','error'].forEach(s => {
+    const el = document.getElementById(`estado-${s}`);
+    if (el) el.style.display = s === estado ? '' : 'none';
+  });
+}
+
+function irAReportar() {
+  if (!estaLogueado()) { abrirLogin(); return; }
+  window.location.href = `reportar.html?comercio=${comercioData?.id || ''}`;
+}
+</script>
+
+<!-- ✓ comercio.html — completo -->
+</body>
+</html>

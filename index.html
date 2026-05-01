@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PrecioVista — Comparador de precios en tiempo real</title>
+<meta name="description" content="Compará precios de supermercados y kioscos en tiempo real. Colaborativo, gratis, sin registro obligatorio.">
+<meta name="theme-color" content="#080B12">
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="css/styles.css">
+<style>
+  /* Hero layout */
+  .hero-grid {
+    display: grid; grid-template-columns: 1fr 380px;
+    gap: 3rem; align-items: center;
+  }
+  @media(max-width:900px){ .hero-grid { grid-template-columns: 1fr; } .hero-visual { display: none; } }
+
+  /* Tarjetas flotantes */
+  .hero-visual { position: relative; height: 300px; }
+  .fc {
+    background: var(--bg-2); border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg); padding: 1rem 1.2rem;
+    position: absolute; box-shadow: var(--shadow-card);
+  }
+  .fc:nth-child(1) { top: 0; left: 0; right: 0; animation: float 5s ease-in-out infinite; }
+  .fc:nth-child(2) { bottom: 50px; left: 10px; width: 195px; animation: float 5s ease-in-out infinite 1.5s; }
+  .fc:nth-child(3) { bottom: 20px; right: 0; width: 165px; animation: float 5s ease-in-out infinite 3s; }
+  .fc-label { font-size: 0.7rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 7px; }
+  .fc-row { display: flex; align-items: center; gap: 9px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+  .fc-row:last-child { border: none; }
+  .fc-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .fc-store { font-size: 0.8rem; font-weight: 500; flex: 1; color: var(--text-1); }
+  .fc-price { font-size: 0.85rem; font-weight: 700; font-family: var(--font-display); }
+  .fc-best { color: var(--green-light); }
+</style>
+</head>
+<body>
+
+<!-- ── Nav ── -->
+<nav class="nav">
+  <a href="index.html" class="nav-logo">
+    <img src="assets/logo.png" alt="PrecioVista" class="nav-logo-img">
+    PrecioVista
+  </a>
+  <div class="nav-links">
+    <a class="nav-link active" href="index.html">Inicio</a>
+    <a class="nav-link" href="pages/buscar.html">Buscar</a>
+    <a class="nav-link" href="pages/reportar.html">Reportar precio</a>
+    <div class="nav-location" onclick="abrirUbicacion()">
+      <div class="nav-location-dot"></div>
+      <span id="nav-location-text">Argentina</span>
+    </div>
+  </div>
+  <div class="nav-actions">
+    <span id="nav-user" style="display:none;font-size:0.82rem;color:var(--text-2)"></span>
+    <button id="btn-logout" style="display:none" class="nav-btn secondary" onclick="cerrarSesion()">Salir</button>
+    <button id="btn-auth" class="nav-btn" onclick="abrirLogin()">Ingresar</button>
+  </div>
+</nav>
+
+<!-- ── Hero ── -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-grid">
+      <div>
+        <div class="hero-eyebrow fade-up fade-up-1">
+          <span>●</span> Colaborativo · Gratuito · Tiempo real
+        </div>
+        <h1 class="hero-title fade-up fade-up-2">
+          Pagá el precio <span class="gradient">justo</span> en cada compra
+        </h1>
+        <p class="hero-sub fade-up fade-up-3">
+          Precios reales reportados por personas como vos. Comparamos supermercados y kioscos cerca tuyo, en 8 países. Sin publicidad, sin costo.
+        </p>
+
+        <div class="search-wrap fade-up fade-up-4">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="search-input" id="main-search"
+            placeholder="Buscá un producto... ej: leche, arroz, aceite">
+          <button class="search-btn" onclick="buscar()">
+            <span>Comparar</span>
+          </button>
+        </div>
+
+        <div class="search-suggestions fade-up fade-up-4">
+          <span class="suggestion-chip" onclick="buscarProducto('leche')">🥛 Leche</span>
+          <span class="suggestion-chip" onclick="buscarProducto('arroz')">🍚 Arroz</span>
+          <span class="suggestion-chip" onclick="buscarProducto('aceite')">🫙 Aceite</span>
+          <span class="suggestion-chip" onclick="buscarProducto('pan')">🍞 Pan</span>
+          <span class="suggestion-chip" onclick="buscarProducto('coca')">🥤 Coca-Cola</span>
+          <span class="suggestion-chip" onclick="buscarProducto('yerba')">🧉 Yerba</span>
+        </div>
+
+        <div class="stats-bar fade-up fade-up-4">
+          <div class="stat-item">
+            <span class="stat-num" id="stat-precios"><span>0</span></span>
+            <span class="stat-label">precios reportados</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-num" id="stat-comercios"><span>0</span></span>
+            <span class="stat-label">comercios</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-num" id="stat-usuarios"><span>0</span></span>
+            <span class="stat-label">colaboradores</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-num"><span class="accent">8</span></span>
+            <span class="stat-label">países</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tarjetas flotantes demo -->
+      <div class="hero-visual">
+        <div class="fc">
+          <div class="fc-label">🥛 Leche entera 1L · Buenos Aires</div>
+          <div class="fc-row">
+            <div class="fc-dot" style="background:var(--green)"></div>
+            <span class="fc-store">Carrefour</span>
+            <span class="fc-price fc-best">$890</span>
+          </div>
+          <div class="fc-row">
+            <div class="fc-dot" style="background:var(--blue)"></div>
+            <span class="fc-store">Coto</span>
+            <span class="fc-price">$950</span>
+          </div>
+          <div class="fc-row">
+            <div class="fc-dot" style="background:var(--text-3)"></div>
+            <span class="fc-store">Disco</span>
+            <span class="fc-price">$1.020</span>
+          </div>
+        </div>
+        <div class="fc">
+          <div class="fc-label">📍 Más cercano</div>
+          <div style="font-size:0.86rem;font-weight:600;color:var(--text-1)">Carrefour Palermo</div>
+          <div style="font-size:0.75rem;color:var(--text-3);margin-top:2px">2 cuadras · Abierto ahora</div>
+          <div style="font-size:0.85rem;color:var(--orange);margin-top:5px">★★★★☆</div>
+        </div>
+        <div class="fc">
+          <div class="fc-label">📈 Últimos 30 días</div>
+          <div style="font-size:0.8rem;color:var(--red-light);font-weight:600">+8.4%</div>
+          <div style="font-size:0.72rem;color:var(--text-3);margin-top:2px">en lácteos</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Países ── -->
+<section class="section">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-title">Elegí tu país</span>
+      <span class="section-link" onclick="abrirUbicacion()">📍 Cambiar ubicación</span>
+    </div>
+    <div class="countries-grid" id="countries-grid"></div>
+  </div>
+</section>
+
+<!-- ── Cadenas ── -->
+<section class="section" style="border-top:none;padding-top:0">
+  <div class="container">
+    <div class="section-header">
+      <span class="section-title" id="stores-title">Cadenas disponibles en Argentina</span>
+      <a class="section-link" href="pages/buscar.html">Ver todas →</a>
+    </div>
+    <div class="stores-grid" id="stores-grid"></div>
+  </div>
+</section>
+
+<!-- ── Cómo funciona ── -->
+<section class="section">
+  <div class="container">
+    <h2 style="text-align:center;margin-bottom:0.5rem">¿Cómo funciona?</h2>
+    <p style="text-align:center;max-width:500px;margin:0 auto">Simple, rápido, sin complicaciones</p>
+    <div class="steps-grid">
+      <div class="step fade-up fade-up-1">
+        <div class="step-num">1</div>
+        <div class="step-title">Buscás el producto</div>
+        <p class="step-desc">Escribís lo que necesitás comprar y elegís tu zona</p>
+      </div>
+      <div class="step fade-up fade-up-2">
+        <div class="step-num">2</div>
+        <div class="step-title">Comparás precios</div>
+        <p class="step-desc">Ves el ranking de precios reales y en qué comercios están más baratos</p>
+      </div>
+      <div class="step fade-up fade-up-3">
+        <div class="step-num">3</div>
+        <div class="step-title">Encontrás el más cercano</div>
+        <p class="step-desc">El mapa te muestra los comercios con sus horarios y distancia</p>
+      </div>
+      <div class="step fade-up fade-up-4">
+        <div class="step-num">4</div>
+        <div class="step-title">Contribuís con la comunidad</div>
+        <p class="step-desc">Si querés, reportás el precio que viste y ayudás a miles de personas</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Features ── -->
+<section class="section">
+  <div class="container">
+    <h2 style="text-align:center;margin-bottom:0.5rem">¿Por qué PrecioVista?</h2>
+    <p style="text-align:center;max-width:500px;margin:0 auto 0">Sin depender de supermercados, sin publicidad, sin costo</p>
+    <div class="features-grid" style="margin-top:2rem">
+      <div class="feature-card">
+        <span class="feature-icon">🤝</span>
+        <div class="feature-title">100% colaborativo</div>
+        <p class="feature-desc">Los precios los cargan personas reales. Sin acuerdos con cadenas. Sin datos inventados.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">📍</span>
+        <div class="feature-title">Cerca tuyo</div>
+        <p class="feature-desc">Ves solo los comercios de tu provincia y ciudad. Con mapa y horarios en tiempo real.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">📈</span>
+        <div class="feature-title">Historial 30 días</div>
+        <p class="feature-desc">Seguí cómo subieron o bajaron los precios. Útil especialmente en épocas de inflación.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🌎</span>
+        <div class="feature-title">8 países</div>
+        <p class="feature-desc">Argentina, España, Chile, Uruguay, Paraguay, Bolivia, Perú y México. Más países en camino.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">🔒</span>
+        <div class="feature-title">Sin registro para ver</div>
+        <p class="feature-desc">Cualquier persona puede ver y comparar precios sin crear una cuenta.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon">📱</span>
+        <div class="feature-title">Funciona en tu celular</div>
+        <p class="feature-desc">Instalable como app desde el navegador. Sin tiendas de aplicaciones, sin instalaciones complejas.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ── -->
+<section class="section">
+  <div class="container">
+    <div style="background:var(--bg-2);border:1px solid rgba(200,168,130,0.2);border-radius:var(--radius-xl);padding:3rem 2rem;text-align:center;position:relative;overflow:hidden">
+      <div style="position:absolute;inset:0;background:radial-gradient(circle at center,rgba(200,168,130,0.06),transparent 70%);pointer-events:none"></div>
+      <h2 style="margin-bottom:0.8rem">¿Fuiste al super hoy?</h2>
+      <p style="max-width:440px;margin:0 auto 2rem">Cargá los precios que viste y ayudá a miles de personas a comprar mejor. Solo tarda 30 segundos.</p>
+      <button class="btn btn-wood" style="width:auto;padding:12px 32px;font-size:1rem" onclick="irAReportar()">
+        📝 Reportar un precio ahora
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ── -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-inner">
+      <div>
+        <div class="nav-logo" style="margin-bottom:6px">
+          <img src="assets/logo.png" alt="PrecioVista" class="nav-logo-img">
+          PrecioVista
+        </div>
+        <p class="footer-copy">© 2026 PrecioVista. Licencia CC BY-NC-SA 4.0.</p>
+      </div>
+      <div class="footer-links">
+        <a class="footer-link" href="pages/buscar.html">Buscar</a>
+        <a class="footer-link" href="pages/reportar.html">Reportar precio</a>
+        <a class="footer-link" href="https://github.com/TU_USUARIO/preciovista" target="_blank">GitHub</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- ── Scripts ── -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/data.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+<script>
+  function irAReportar() {
+    if (!estaLogueado()) { abrirLogin(); return; }
+    window.location.href = 'pages/reportar.html';
+  }
+  // Registrar service worker para PWA
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register(new URL('sw.js', window.location.href).pathname).catch(() => {});
+    });
+  }
+</script>
+
+<!-- ✓ index.html — completo -->
+</body>
+</html>

@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reportar precio — PrecioVista</title>
+<link rel="stylesheet" href="../css/styles.css">
+<style>
+  .report-wrap { max-width: 560px; margin: 2rem auto; padding: 0 1rem; }
+  .report-card { background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 2rem; }
+  .step-content { display: none; }
+  .step-content.active { display: block; }
+  .product-option {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; border-radius: var(--radius-sm);
+    background: var(--bg-3); border: 1px solid var(--border);
+    cursor: pointer; transition: var(--t); margin-bottom: 8px;
+  }
+  .product-option:hover  { border-color: var(--wood); }
+  .product-option.active { border-color: var(--wood); background: rgba(200,168,130,0.08); }
+  .product-option-emoji  { font-size: 1.4rem; }
+  .product-option-name   { font-size: 0.9rem; font-weight: 500; color: var(--text-1); }
+  .store-option {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; border-radius: var(--radius-sm);
+    background: var(--bg-3); border: 1px solid var(--border);
+    cursor: pointer; transition: var(--t); margin-bottom: 8px;
+  }
+  .store-option:hover  { border-color: var(--wood); }
+  .store-option.active { border-color: var(--wood); background: rgba(200,168,130,0.08); }
+  .store-option-logo {
+    width: 32px; height: 32px; border-radius: 6px;
+    background: white; display: flex; align-items: center;
+    justify-content: center; font-size: 0.65rem; font-weight: 800;
+    font-family: var(--font-display); flex-shrink: 0; overflow: hidden; padding: 3px;
+  }
+  .store-option-logo img { width: 100%; object-fit: contain; }
+  .store-option-logo-fallback {
+    width: 32px; height: 32px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.62rem; font-weight: 800; font-family: var(--font-display);
+    color: white; flex-shrink: 0;
+  }
+  .store-option-name { font-size: 0.88rem; font-weight: 500; color: var(--text-1); }
+  .price-input-wrap {
+    display: flex; align-items: center; gap: 0;
+    background: var(--bg-3); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); overflow: hidden;
+    transition: var(--t);
+  }
+  .price-input-wrap:focus-within { border-color: var(--wood); box-shadow: 0 0 0 3px var(--wood-glow); }
+  .price-symbol {
+    padding: 10px 14px; background: var(--bg-4);
+    font-family: var(--font-display); font-weight: 700;
+    color: var(--wood); font-size: 1.1rem; border-right: 1px solid var(--border);
+  }
+  .price-input {
+    flex: 1; background: none; border: none; outline: none;
+    padding: 10px 14px; color: var(--text-1);
+    font-family: var(--font-display); font-size: 1.3rem; font-weight: 700;
+  }
+  .price-input::placeholder { color: var(--text-3); font-size: 1rem; font-weight: 400; }
+  .summary-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
+  .summary-row:last-child { border: none; }
+  .summary-label { color: var(--text-3); }
+  .summary-val   { color: var(--text-1); font-weight: 500; }
+  .success-state { text-align: center; padding: 1rem 0; }
+  .success-icon  { font-size: 3rem; margin-bottom: 1rem; display: block; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="../index.html" class="nav-logo">
+    <img src="../assets/logo.png" alt="PrecioVista" class="nav-logo-img">
+    PrecioVista
+  </a>
+  <div class="nav-links">
+    <a class="nav-link" href="../index.html">Inicio</a>
+    <a class="nav-link" href="buscar.html">Buscar</a>
+    <a class="nav-link active" href="reportar.html">Reportar precio</a>
+    <div class="nav-location" onclick="abrirUbicacion()">
+      <div class="nav-location-dot"></div>
+      <span id="nav-location-text">Argentina</span>
+    </div>
+  </div>
+  <div class="nav-actions">
+    <span id="nav-user" style="display:none;font-size:0.82rem;color:var(--text-2)"></span>
+    <button id="btn-logout" style="display:none" class="nav-btn secondary" onclick="cerrarSesion()">Salir</button>
+    <button id="btn-auth" class="nav-btn" onclick="abrirLogin()">Ingresar</button>
+  </div>
+</nav>
+
+<div class="report-wrap">
+
+  <!-- No logueado -->
+  <div id="estado-noauth" style="display:none">
+    <div class="empty-state" style="padding:4rem 0">
+      <span class="empty-state-icon">🔒</span>
+      <div class="empty-state-title">Necesitás una cuenta</div>
+      <p class="empty-state-desc" style="margin-bottom:1.5rem">Solo los colaboradores registrados pueden reportar precios</p>
+      <button class="btn btn-wood" style="width:auto;padding:11px 28px" onclick="abrirLogin()">Crear cuenta o ingresar</button>
+    </div>
+  </div>
+
+  <!-- Formulario -->
+  <div id="estado-form" style="display:none">
+    <div style="margin-bottom:1.5rem">
+      <h1 style="font-size:1.4rem;margin-bottom:0.3rem">Reportar un precio</h1>
+      <p style="font-size:0.85rem">Completá los 4 pasos. Tarda menos de 30 segundos.</p>
+    </div>
+
+    <div class="report-card">
+      <!-- Steps indicator -->
+      <div class="report-steps" id="steps-indicator">
+        <div class="step-dot active" id="dot-1"></div>
+        <div class="step-dot" id="dot-2"></div>
+        <div class="step-dot" id="dot-3"></div>
+        <div class="step-dot" id="dot-4"></div>
+      </div>
+
+      <!-- PASO 1: Producto -->
+      <div class="step-content active" id="step-1">
+        <h3 style="margin-bottom:0.3rem">Paso 1 de 4</h3>
+        <p style="font-size:0.85rem;margin-bottom:1.2rem">¿Qué producto viste?</p>
+        <div class="form-group">
+          <input type="text" class="form-input" id="buscar-producto" placeholder="🔍 Buscá o escribí el nombre..." oninput="filtrarProductos()">
+        </div>
+        <div id="productos-lista" style="max-height:280px;overflow-y:auto"></div>
+        <div id="producto-personalizado" style="display:none;margin-top:10px">
+          <div class="form-group">
+            <label class="form-label">Nombre del producto</label>
+            <input type="text" class="form-input" id="nombre-custom" placeholder="Ej: Galletitas Oreo 300g">
+          </div>
+        </div>
+        <button class="btn btn-secondary" style="margin-top:10px;font-size:0.8rem" onclick="toggleProductoCustom()">
+          + No está en la lista, lo escribo manualmente
+        </button>
+      </div>
+
+      <!-- PASO 2: Comercio -->
+      <div class="step-content" id="step-2">
+        <h3 style="margin-bottom:0.3rem">Paso 2 de 4</h3>
+        <p style="font-size:0.85rem;margin-bottom:1.2rem">¿En qué comercio lo viste?</p>
+        <div id="comercios-lista" style="max-height:320px;overflow-y:auto"></div>
+      </div>
+
+      <!-- PASO 3: Precio -->
+      <div class="step-content" id="step-3">
+        <h3 style="margin-bottom:0.3rem">Paso 3 de 4</h3>
+        <p style="font-size:0.85rem;margin-bottom:1.2rem">¿Cuánto cuesta?</p>
+        <div class="form-group">
+          <label class="form-label">Precio que viste en góndola</label>
+          <div class="price-input-wrap">
+            <span class="price-symbol" id="simbolo-moneda">$</span>
+            <input type="number" class="price-input" id="input-precio" placeholder="0.00" min="0" step="0.01">
+          </div>
+          <span class="form-hint">Ingresá el precio exacto que figura en la etiqueta</span>
+          <span class="form-error" id="precio-error"></span>
+        </div>
+      </div>
+
+      <!-- PASO 4: Confirmación -->
+      <div class="step-content" id="step-4">
+        <h3 style="margin-bottom:0.3rem">Paso 4 de 4</h3>
+        <p style="font-size:0.85rem;margin-bottom:1.2rem">Confirmá antes de enviar</p>
+        <div style="background:var(--bg-3);border-radius:var(--radius-md);padding:1rem;margin-bottom:1.2rem">
+          <div class="summary-row"><span class="summary-label">Producto</span><span class="summary-val" id="sum-producto">—</span></div>
+          <div class="summary-row"><span class="summary-label">Comercio</span><span class="summary-val" id="sum-comercio">—</span></div>
+          <div class="summary-row"><span class="summary-label">Precio</span><span class="summary-val" id="sum-precio" style="color:var(--green-light);font-family:var(--font-display);font-size:1.1rem">—</span></div>
+          <div class="summary-row"><span class="summary-label">País</span><span class="summary-val" id="sum-pais">—</span></div>
+        </div>
+        <div class="commit-box">
+          <strong>Recordá tu compromiso:</strong> Solo reportá precios que hayas visto personalmente hoy.
+          Datos incorrectos pueden resultar en el bloqueo de tu cuenta.
+        </div>
+        <label class="commit-check" style="margin-bottom:1.2rem">
+          <input type="checkbox" id="confirm-veraz">
+          Confirmo que este precio es real y lo vi hoy
+        </label>
+        <span class="form-error" id="confirm-error"></span>
+      </div>
+
+      <!-- Éxito -->
+      <div class="step-content" id="step-success">
+        <div class="success-state">
+          <span class="success-icon">🎉</span>
+          <h3 style="margin-bottom:0.5rem">¡Precio reportado!</h3>
+          <p style="margin-bottom:1.5rem">Gracias por contribuir. Tu reporte ayuda a miles de personas.</p>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+            <a href="buscar.html" class="btn btn-secondary btn-sm" style="width:auto">Ver precios</a>
+            <button class="btn btn-wood btn-sm" style="width:auto" onclick="reiniciar()">Reportar otro</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navegación -->
+      <div id="nav-btns" style="display:flex;gap:10px;margin-top:1.5rem">
+        <button class="btn btn-secondary" id="btn-anterior" style="display:none" onclick="pasoAnterior()">← Anterior</button>
+        <button class="btn btn-wood" id="btn-siguiente" onclick="pasoSiguiente()">Siguiente →</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer class="footer">
+  <div class="container">
+    <div class="footer-inner">
+      <p class="footer-copy">© 2026 PrecioVista. CC BY-NC-SA 4.0.</p>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/data.js"></script>
+<script src="../js/supabase.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/app.js"></script>
+<script>
+let pasoActual      = 1;
+let productoSel     = null;
+let comercioSel     = null;
+let productosCustom = false;
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Verificar auth usando el callback de onAuthChange para evitar race condition
+  // en conexiones lentas. El estado inicial se evalúa una vez que Supabase resuelve.
+  verificarAuth();
+  onAuthChange(() => verificarAuth());
+
+  // Pre-llenar búsqueda si viene de buscar.html
+  const q = getParam('q');
+  if (q) {
+    const inp = document.getElementById('buscar-producto');
+    if (inp) { inp.value = q; filtrarProductos(); }
+  }
+  // Pre-seleccionar comercio si viene de comercio.html
+  const comercioId = getParam('comercio');
+  if (comercioId) preSeleccionarComercio(comercioId);
+
+  renderProductosLista('');
+  renderComerciosLista();
+  actualizarSimboloMoneda();
+});
+
+function verificarAuth() {
+  const logueado = estaLogueado();
+  document.getElementById('estado-noauth').style.display = logueado ? 'none' : '';
+  document.getElementById('estado-form').style.display   = logueado ? '' : 'none';
+}
+
+function actualizarSimboloMoneda() {
+  const paisId = localStorage.getItem('pv_pais') || 'ar';
+  const pais   = getPais(paisId);
+  const el     = document.getElementById('simbolo-moneda');
+  if (el) el.textContent = pais.simbolo;
+}
+
+function filtrarProductos() {
+  const q = document.getElementById('buscar-producto')?.value.toLowerCase() || '';
+  renderProductosLista(q);
+}
+
+function renderProductosLista(q) {
+  const lista = document.getElementById('productos-lista');
+  if (!lista) return;
+  const filtrados = q
+    ? PRODUCTOS_DEMO.filter(p => p.nombre.toLowerCase().includes(q))
+    : PRODUCTOS_DEMO;
+  if (filtrados.length === 0) {
+    lista.innerHTML = `<p style="color:var(--text-3);font-size:0.85rem;padding:8px 0">Sin resultados. Usá "escribir manualmente" abajo.</p>`;
+    return;
+  }
+  lista.innerHTML = filtrados.map(p => `
+    <div class="product-option ${productoSel?.id === p.id ? 'active' : ''}"
+         onclick="seleccionarProducto('${p.id}')">
+      <span class="product-option-emoji">${p.emoji}</span>
+      <span class="product-option-name">${p.nombre}</span>
+    </div>
+  `).join('');
+}
+
+function seleccionarProducto(id) {
+  productoSel = PRODUCTOS_DEMO.find(p => p.id === id);
+  renderProductosLista(document.getElementById('buscar-producto')?.value.toLowerCase() || '');
+}
+
+function toggleProductoCustom() {
+  productosCustom = !productosCustom;
+  document.getElementById('producto-personalizado').style.display = productosCustom ? 'block' : 'none';
+}
+
+function renderComerciosLista() {
+  const lista  = document.getElementById('comercios-lista');
+  const paisId = localStorage.getItem('pv_pais') || 'ar';
+  const cadenas = getCadenas(paisId);
+  if (!lista) return;
+  lista.innerHTML = cadenas.map(c => {
+    const logoHtml = c.logo
+      ? `<div class="store-option-logo"><img src="${c.logo}" alt="${c.nombre}" onerror="this.parentElement.outerHTML='<div class=store-option-logo-fallback style=background:${c.color};color:white>${c.iniciales}</div>'"></div>`
+      : `<div class="store-option-logo-fallback" style="background:${c.color};color:white">${c.iniciales}</div>`;
+    const badge = c.tipo === 'super' ? 'badge-super' : 'badge-kiosk';
+    const label = c.tipo === 'super' ? 'Supermercado' : 'Kiosco';
+    return `
+    <div class="store-option ${comercioSel?.id === c.id ? 'active' : ''}" onclick="seleccionarComercio('${c.id}')">
+      ${logoHtml}
+      <span class="store-option-name">${c.nombre}</span>
+      <span class="store-type-badge ${badge}" style="margin-left:auto">${label}</span>
+    </div>`;
+  }).join('');
+}
+
+function seleccionarComercio(id) {
+  const paisId = localStorage.getItem('pv_pais') || 'ar';
+  comercioSel  = getCadenas(paisId).find(c => c.id === id);
+  renderComerciosLista();
+}
+
+function preSeleccionarComercio(id) {
+  const paisId = localStorage.getItem('pv_pais') || 'ar';
+  comercioSel  = getCadenas(paisId).find(c => c.id === id);
+}
+
+function pasoSiguiente() {
+  if (!validarPaso(pasoActual)) return;
+  if (pasoActual === 3) rellenarResumen();
+  if (pasoActual < 4) {
+    irAPaso(pasoActual + 1);
+  } else {
+    enviarReporte();
+  }
+}
+
+function pasoAnterior() {
+  if (pasoActual > 1) irAPaso(pasoActual - 1);
+}
+
+function irAPaso(n) {
+  document.getElementById(`step-${pasoActual}`)?.classList.remove('active');
+  document.getElementById(`dot-${pasoActual}`)?.classList.remove('active');
+  document.getElementById(`dot-${pasoActual}`)?.classList.add('done');
+  pasoActual = n;
+  document.getElementById(`step-${n}`)?.classList.add('active');
+  document.getElementById(`dot-${n}`)?.classList.add('active');
+  const btnAnterior = document.getElementById('btn-anterior');
+  const btnSiguiente = document.getElementById('btn-siguiente');
+  if (btnAnterior) btnAnterior.style.display = n > 1 ? '' : 'none';
+  if (btnSiguiente) btnSiguiente.textContent = n === 4 ? '✓ Confirmar y enviar' : 'Siguiente →';
+}
+
+function validarPaso(paso) {
+  if (paso === 1) {
+    if (productosCustom) {
+      const nombre = document.getElementById('nombre-custom')?.value.trim();
+      if (!nombre) { mostrarToast('Escribí el nombre del producto', 'error'); return false; }
+      productoSel = { id: 'custom_' + Date.now(), nombre, emoji: '🛒' };
+    } else if (!productoSel) {
+      mostrarToast('Seleccioná un producto', 'error'); return false;
+    }
+  }
+  if (paso === 2 && !comercioSel) {
+    mostrarToast('Seleccioná un comercio', 'error'); return false;
+  }
+  if (paso === 3) {
+    const precio = parseFloat(document.getElementById('input-precio')?.value);
+    if (!precio || precio <= 0) {
+      const errEl = document.getElementById('precio-error');
+      if (errEl) { errEl.textContent = 'Ingresá un precio válido mayor a 0'; errEl.style.display = 'block'; }
+      return false;
+    }
+    const errEl = document.getElementById('precio-error');
+    if (errEl) errEl.style.display = 'none';
+  }
+  if (paso === 4) {
+    if (!document.getElementById('confirm-veraz')?.checked) {
+      const errEl = document.getElementById('confirm-error');
+      if (errEl) { errEl.textContent = 'Debés confirmar que el precio es real'; errEl.style.display = 'block'; }
+      return false;
+    }
+  }
+  return true;
+}
+
+function rellenarResumen() {
+  const paisId = localStorage.getItem('pv_pais') || 'ar';
+  const pais   = getPais(paisId);
+  const precio = parseFloat(document.getElementById('input-precio')?.value || '0');
+  const sumProd = document.getElementById('sum-producto');
+  const sumCom  = document.getElementById('sum-comercio');
+  const sumPre  = document.getElementById('sum-precio');
+  const sumPais = document.getElementById('sum-pais');
+  if (sumProd) sumProd.textContent = productoSel ? `${productoSel.emoji} ${productoSel.nombre}` : '—';
+  if (sumCom)  sumCom.textContent  = comercioSel?.nombre || '—';
+  if (sumPre)  sumPre.textContent  = formatPrecio(precio, pais.simbolo);
+  if (sumPais) sumPais.textContent = `${pais.bandera} ${pais.nombre}`;
+}
+
+async function enviarReporte() {
+  const btn = document.getElementById('btn-siguiente');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Enviando...'; }
+
+  const user   = getUsuarioLocal();
+  const precio = parseFloat(document.getElementById('input-precio')?.value || '0');
+
+  const { error } = await reportarPrecio({
+    productoId:  productoSel.id,
+    comercioId:  comercioSel.id,
+    precio,
+    usuarioId:   user?.id || 'demo'
+  });
+
+  if (btn) { btn.disabled = false; btn.textContent = '✓ Confirmar y enviar'; }
+
+  // Mostrar éxito siempre (en demo también)
+  document.getElementById(`step-4`)?.classList.remove('active');
+  document.getElementById('step-success')?.classList.add('active');
+  document.getElementById('nav-btns').style.display = 'none';
+  for (let i = 1; i <= 4; i++) {
+    document.getElementById(`dot-${i}`)?.classList.add('done');
+    document.getElementById(`dot-${i}`)?.classList.remove('active');
+  }
+  if (error && !error.message?.includes('demo')) {
+    mostrarToast('Error al enviar. Intentá de nuevo.', 'error');
+  }
+}
+
+function reiniciar() {
+  pasoActual    = 1;
+  productoSel   = null;
+  comercioSel   = null;
+  productosCustom = false;
+  document.getElementById('buscar-producto').value = '';
+  document.getElementById('input-precio').value    = '';
+  document.getElementById('confirm-veraz').checked = false;
+  document.getElementById('step-success')?.classList.remove('active');
+  document.getElementById('step-1')?.classList.add('active');
+  document.getElementById('nav-btns').style.display = '';
+  for (let i = 1; i <= 4; i++) {
+    const dot = document.getElementById(`dot-${i}`);
+    if (dot) { dot.classList.remove('done','active'); }
+  }
+  document.getElementById('dot-1')?.classList.add('active');
+  document.getElementById('btn-anterior').style.display = 'none';
+  document.getElementById('btn-siguiente').textContent  = 'Siguiente →';
+  renderProductosLista('');
+  renderComerciosLista();
+}
+</script>
+
+<!-- ✓ reportar.html — completo -->
+</body>
+</html>

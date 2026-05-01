@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel Admin — PrecioVista</title>
+<link rel="stylesheet" href="../css/styles.css">
+<style>
+  .admin-stat {
+    background: var(--bg-2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 1.2rem 1.5rem;
+  }
+  .admin-stat-num   { font-family: var(--font-display); font-size: 2rem; font-weight: 800; color: var(--text-1); line-height: 1; }
+  .admin-stat-label { font-size: 0.78rem; color: var(--text-3); margin-top: 4px; }
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap: 12px; margin-bottom: 2rem; }
+  .search-admin {
+    background: var(--bg-3); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 8px 14px;
+    color: var(--text-1); font-family: var(--font-body);
+    font-size: 0.88rem; outline: none; width: 240px; transition: var(--t);
+  }
+  .search-admin:focus { border-color: var(--wood); }
+  .search-admin::placeholder { color: var(--text-3); }
+  .ban-modal { max-width: 400px; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="../index.html" class="nav-logo">
+    <img src="../assets/logo.png" alt="PrecioVista" class="nav-logo-img">
+    PrecioVista
+  </a>
+  <div class="nav-actions">
+    <span class="admin-badge">🔐 Panel Admin</span>
+    <button class="nav-btn secondary" onclick="cerrarSesion()">Salir</button>
+  </div>
+</nav>
+
+<!-- No autorizado -->
+<div id="estado-noauth" style="display:none">
+  <div class="empty-state" style="padding:6rem 0">
+    <span class="empty-state-icon">🔒</span>
+    <div class="empty-state-title">Acceso denegado</div>
+    <p class="empty-state-desc" style="margin-bottom:1.5rem">Esta página es solo para el administrador</p>
+    <a href="../index.html" class="btn btn-secondary btn-sm" style="width:auto;padding:10px 24px">Volver al inicio</a>
+  </div>
+</div>
+
+<!-- Panel -->
+<div id="estado-panel" style="display:none">
+  <div class="container admin-wrap">
+
+    <div class="admin-header">
+      <div>
+        <h1 class="admin-title">Panel de administración</h1>
+        <p style="font-size:0.85rem;margin-top:4px">PrecioVista — Control de usuarios y reportes</p>
+      </div>
+      <span class="admin-badge">🔐 Solo admin</span>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row" id="admin-stats">
+      <div class="admin-stat">
+        <div class="admin-stat-num" id="st-usuarios">—</div>
+        <div class="admin-stat-label">usuarios registrados</div>
+      </div>
+      <div class="admin-stat">
+        <div class="admin-stat-num" id="st-reportes">—</div>
+        <div class="admin-stat-label">precios reportados</div>
+      </div>
+      <div class="admin-stat">
+        <div class="admin-stat-num" id="st-baneados" style="color:var(--red-light)">—</div>
+        <div class="admin-stat-label">usuarios baneados</div>
+      </div>
+      <div class="admin-stat">
+        <div class="admin-stat-num" id="st-pendientes" style="color:var(--orange)">—</div>
+        <div class="admin-stat-label">reportes pendientes</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="admin-tabs">
+      <div class="admin-tab active" onclick="cambiarTab('usuarios',this)">👥 Usuarios</div>
+      <div class="admin-tab" onclick="cambiarTab('reportes',this)">📋 Reportes</div>
+    </div>
+
+    <!-- Tab Usuarios -->
+    <div id="tab-usuarios">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:10px">
+        <input class="search-admin" type="text" placeholder="🔍 Buscar usuario..." oninput="filtrarUsuarios(this.value)">
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary btn-sm" onclick="filtroEstado('')">Todos</button>
+          <button class="btn btn-secondary btn-sm" onclick="filtroEstado('activo')">Activos</button>
+          <button class="btn btn-danger btn-sm" onclick="filtroEstado('baneado')">Baneados</button>
+        </div>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Usuario</th>
+              <th>Email</th>
+              <th>Reportes</th>
+              <th>Registro</th>
+              <th>Estado</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-usuarios">
+            <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-3)">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tab Reportes -->
+    <div id="tab-reportes" style="display:none">
+      <div style="margin-bottom:1rem">
+        <input class="search-admin" type="text" placeholder="🔍 Buscar reporte..." oninput="filtrarReportes(this.value)">
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Comercio</th>
+              <th>Precio</th>
+              <th>Usuario</th>
+              <th>Fecha</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-reportes">
+            <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-3)">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal ban -->
+<div class="modal-overlay" id="modal-ban">
+  <div class="modal ban-modal">
+    <button class="modal-close" onclick="cerrarModalBan()">✕</button>
+    <div class="modal-logo">🚫</div>
+    <h2 class="modal-title">Banear usuario</h2>
+    <p class="modal-sub" id="ban-usuario-nombre">Usuario</p>
+    <div class="form-group">
+      <label class="form-label">Motivo del ban (se le envía por email)</label>
+      <textarea class="form-input" id="ban-motivo" rows="3" placeholder="Ej: Precios incorrectos reportados repetidamente..." style="resize:none"></textarea>
+      <span class="form-error" id="ban-motivo-error"></span>
+    </div>
+    <button class="btn btn-danger" onclick="confirmarBan()" style="background:var(--red);color:white;border:none">
+      🚫 Confirmar ban
+    </button>
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="cerrarModalBan()">Cancelar</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/data.js"></script>
+<script src="../js/supabase.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/app.js"></script>
+<script>
+let todosUsuarios = [];
+let todosReportes = [];
+let usuarioBanId  = null;
+let filtroActivo  = '';
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Usar onAuthChange para evitar race condition (mismo patrón que reportar.html)
+  verificarAdmin();
+  onAuthChange(() => verificarAdmin());
+});
+
+async function verificarAdmin() {
+  const user = getUsuarioLocal();
+  if (!user || !esAdmin(user)) {
+    document.getElementById('estado-noauth').style.display = '';
+    return;
+  }
+  document.getElementById('estado-panel').style.display = '';
+  await Promise.all([cargarUsuarios(), cargarReportes()]);
+  actualizarStats();
+}
+
+async function cargarUsuarios() {
+  const { data } = await adminGetUsuarios();
+  todosUsuarios = data || [];
+  renderUsuarios(todosUsuarios);
+}
+
+async function cargarReportes() {
+  const { data } = await adminGetReportes();
+  todosReportes = data || [];
+  renderReportes(todosReportes);
+}
+
+function actualizarStats() {
+  const baneados   = todosUsuarios.filter(u => u.baneado).length;
+  const pendientes = todosReportes.filter(r => !r.verificado).length;
+  const setStat = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  setStat('st-usuarios',   todosUsuarios.length);
+  setStat('st-reportes',   todosReportes.length);
+  setStat('st-baneados',   baneados);
+  setStat('st-pendientes', pendientes);
+}
+
+function renderUsuarios(lista) {
+  const tbody = document.getElementById('tbody-usuarios');
+  if (!tbody) return;
+  if (!lista.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-3)">No hay usuarios</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = lista.map(u => {
+    const fecha  = u.created_at ? new Date(u.created_at).toLocaleDateString('es-AR') : '—';
+    const estado = u.baneado
+      ? `<span class="status-badge status-banned">🚫 Baneado</span>`
+      : `<span class="status-badge status-active">● Activo</span>`;
+    const accion = u.baneado
+      ? `<button class="btn-unban" onclick="desbanear('${u.id}','${u.nombre}')">✓ Desbanear</button>`
+      : `<button class="btn-ban" onclick="abrirModalBan('${u.id}','${u.nombre}')">🚫 Banear</button>`;
+    return `
+    <tr>
+      <td style="color:var(--text-1);font-weight:500">${u.nombre || '—'}</td>
+      <td style="font-size:0.82rem">${u.email}</td>
+      <td style="font-family:var(--font-display);color:var(--wood);text-align:center">${u.reportes_count || 0}</td>
+      <td>${fecha}</td>
+      <td>${estado}</td>
+      <td>${accion}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderReportes(lista) {
+  const tbody = document.getElementById('tbody-reportes');
+  if (!tbody) return;
+  if (!lista.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-3)">No hay reportes</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = lista.map(r => {
+    const fecha  = r.created_at ? new Date(r.created_at).toLocaleDateString('es-AR') : '—';
+    const estado = r.verificado
+      ? `<span class="status-badge status-active">✓ Verificado</span>`
+      : `<span class="status-badge" style="background:rgba(245,158,11,0.12);color:var(--orange)">⏳ Pendiente</span>`;
+    const producto = r.productos?.nombre || r.producto || '—';
+    const comercio = r.comercios?.nombre || r.comercio || '—';
+    const usuario  = r.usuarios?.nombre  || r.usuario  || '—';
+    return `
+    <tr>
+      <td style="color:var(--text-1)">${producto}</td>
+      <td>${comercio}</td>
+      <td style="font-family:var(--font-display);color:var(--green-light);font-weight:700">$${r.precio?.toLocaleString('es-AR') || '—'}</td>
+      <td style="font-size:0.82rem">${usuario}</td>
+      <td>${fecha}</td>
+      <td>${estado}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filtrarUsuarios(q) {
+  const ql = q.toLowerCase();
+  let lista = todosUsuarios.filter(u =>
+    u.nombre?.toLowerCase().includes(ql) || u.email?.toLowerCase().includes(ql)
+  );
+  if (filtroActivo === 'activo')  lista = lista.filter(u => !u.baneado);
+  if (filtroActivo === 'baneado') lista = lista.filter(u => u.baneado);
+  renderUsuarios(lista);
+}
+
+function filtrarReportes(q) {
+  const ql = q.toLowerCase();
+  const lista = todosReportes.filter(r =>
+    (r.productos?.nombre || r.producto || '').toLowerCase().includes(ql) ||
+    (r.comercios?.nombre || r.comercio || '').toLowerCase().includes(ql) ||
+    (r.usuarios?.nombre  || r.usuario  || '').toLowerCase().includes(ql)
+  );
+  renderReportes(lista);
+}
+
+function filtroEstado(estado) {
+  filtroActivo = estado;
+  const q = document.querySelector('.search-admin')?.value || '';
+  filtrarUsuarios(q);
+}
+
+function cambiarTab(tab, btn) {
+  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-usuarios').style.display = tab === 'usuarios' ? '' : 'none';
+  document.getElementById('tab-reportes').style.display = tab === 'reportes' ? '' : 'none';
+}
+
+function abrirModalBan(id, nombre) {
+  usuarioBanId = id;
+  const el = document.getElementById('ban-usuario-nombre');
+  if (el) el.textContent = `Vas a banear a: ${nombre}`;
+  document.getElementById('ban-motivo').value = '';
+  document.getElementById('modal-ban').classList.add('open');
+}
+
+function cerrarModalBan() {
+  document.getElementById('modal-ban').classList.remove('open');
+  usuarioBanId = null;
+}
+
+async function confirmarBan() {
+  const motivo = document.getElementById('ban-motivo')?.value.trim();
+  const errEl  = document.getElementById('ban-motivo-error');
+  if (!motivo) {
+    if (errEl) { errEl.textContent = 'Escribí un motivo'; errEl.style.display = 'block'; }
+    return;
+  }
+  if (errEl) errEl.style.display = 'none';
+
+  const { error } = await adminBanearUsuario(usuarioBanId, motivo);
+  cerrarModalBan();
+  if (error) { mostrarToast('Error al banear usuario', 'error'); return; }
+  mostrarToast('Usuario baneado y notificado por email ✓', 'success');
+  // Actualizar localmente
+  const u = todosUsuarios.find(u => u.id === usuarioBanId);
+  if (u) u.baneado = true;
+  renderUsuarios(todosUsuarios);
+  actualizarStats();
+}
+
+async function desbanear(id, nombre) {
+  const { error } = await adminDesbanearUsuario(id);
+  if (error) { mostrarToast('Error al desbanear', 'error'); return; }
+  mostrarToast(`${nombre} desbaneado ✓`, 'success');
+  const u = todosUsuarios.find(u => u.id === id);
+  if (u) u.baneado = false;
+  renderUsuarios(todosUsuarios);
+  actualizarStats();
+}
+
+// Cerrar modal ban al click fuera
+document.getElementById('modal-ban')?.addEventListener('click', e => {
+  if (e.target.id === 'modal-ban') cerrarModalBan();
+});
+</script>
+
+<!-- ✓ admin.html — completo -->
+</body>
+</html>
