@@ -172,15 +172,30 @@ let usuarioBanId  = null;
 let filtroActivo  = '';
 
 document.addEventListener('DOMContentLoaded', async () => {
-  const db = getClient();
-  if (!db || esModoDemo()) { mostrarNoAuth(); return; }
+  // Esperar hasta que el cliente Supabase esté inicializado
+  // supabase.js lo inicializa en su propio DOMContentLoaded — pueden competir
+  let db = getClient();
+  let intentos = 0;
+  while (!db && intentos < 20) {
+    await new Promise(r => setTimeout(r, 100));
+    db = getClient();
+    intentos++;
+  }
+  if (!db) { mostrarNoAuth(); return; }
+  await intentarAcceso();
 
-  // Usar getSession() que lee desde localStorage sin hacer request de red
-  // Es instantáneo y no tiene race condition
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible') await intentarAcceso();
+  });
+});
+
+async function intentarAcceso() {
+  const db = getClient();
+  if (!db) { mostrarNoAuth(); return; }
   const { data: { session } } = await db.auth.getSession();
   if (!session?.user) { mostrarNoAuth(); return; }
   await verificarAdmin(session.user);
-});
+}
 
 async function verificarAdmin(user) {
   const db = getClient();
