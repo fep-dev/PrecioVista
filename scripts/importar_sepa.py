@@ -1,3 +1,6 @@
+ sepa · PY
+Copiar
+
 #!/usr/bin/env python3
 # ============================================================
 # importar_sepa.py — Importador diario de precios SEPA
@@ -112,87 +115,103 @@ def descargar_zip(url):
 # ── Procesar CSV ────────────────────────────────────────────
 def procesar_csv(zip_path, usuario_id):
     """
-    Procesa el CSV línea por línea para no cargar 12M de registros en memoria.
-    Retorna lista de precios a insertar.
+    El SEPA usa ZIPs anidados: el ZIP principal contiene una carpeta con
+    múltiples ZIPs, uno por cada comercio. Cada ZIP interno contiene un CSV.
     """
+    import io
     precios = {}
     procesados = 0
-    matcheados = 0
  
-    log('Procesando CSV...')
+    log('Procesando estructura ZIP anidada del SEPA...')
  
-    with zipfile.ZipFile(zip_path, 'r') as zf:
-        nombres = zf.namelist()
-        log(f'Archivos en ZIP: {nombres}')
+    with zipfile.ZipFile(zip_path, 'r') as zf_outer:
+        nombres = zf_outer.namelist()
+        zips_internos = [f for f in nombres if f.lower().endswith('.zip')]
+        log(f'ZIPs internos encontrados: {len(zips_internos)}')
  
-        # Buscar archivo de datos — puede ser .csv, sin extensión, o .txt
-        csv_files = [f for f in nombres if f.lower().endswith('.csv')]
-        if not csv_files:
-            csv_files = [f for f in nombres if f.lower().endswith('.txt')]
-        if not csv_files:
-            csv_files = [f for f in nombres if not f.endswith('/')]
- 
-        if not csv_files:
-            log('ERROR: No se encontró archivo de datos en el ZIP')
+        if not zips_internos:
+            log('ERROR: No se encontraron ZIPs internos')
             return []
  
-        csv_file = csv_files[0]
-        log(f'Archivo de datos: {csv_file}')
+        for zip_interno in zips_internos:
+            try:
+                with zf_outer.open(zip_interno) as zf_bytes:
+                    zf_data = io.BytesIO(zf_bytes.read())
  
-        with zf.open(csv_file) as f:
-            reader = csv.DictReader(
-                TextIOWrapper(f, encoding='utf-8', errors='replace'),
-                delimiter='|'  # El SEPA usa | como separador
-            )
- 
-            for row in reader:
-                procesados += 1
- 
-                # Log de progreso cada 500k registros
-                if procesados % 500000 == 0:
-                    log(f'  Procesados: {procesados:,} — Matcheados: {matcheados}')
- 
-                # Verificar provincia
-                provincia = row.get('id_provincia', '') or row.get('provincia', '')
-                if not provincia_permitida(provincia):
-                    continue
- 
-                # Verificar producto
-                nombre_prod = row.get('nombre_producto', '') or row.get('producto', '')
-                producto_id = detectar_producto(nombre_prod)
-                if not producto_id:
-                    continue
- 
-                # Verificar cadena
-                nombre_comercio = row.get('comercio_razon_social', '') or row.get('cadena', '')
-                cadena_id = detectar_cadena(nombre_comercio)
-                if not cadena_id:
-                    continue
- 
-                # Obtener precio
-                try:
-                    precio_str = row.get('precio', '0').replace(',', '.')
-                    precio = float(precio_str)
-                    if precio <= 0:
+                with zipfile.ZipFile(zf_data, 'r') as zf_inner:
+                    archivos = [f for f in zf_inner.namelist() if not f.endswith('/')]
+                    if not archivos:
                         continue
-                except (ValueError, TypeError):
-                    continue
+                    csv_file = archivos[0]
  
-                # Guardar el precio más bajo por combo producto+cadena
-                key = (producto_id, cadena_id)
-                if key not in precios or precio < precios[key]['precio']:
-                    precios[key] = {
-                        'producto_id':  producto_id,
-                        'comercio_id':  cadena_id,
-                        'usuario_id':   usuario_id,
-                        'precio':       precio,
-                        'moneda':       MONEDA,
-                        'verificado':   True,
-                    }
-                    matcheados = len(precios)
+                    with zf_inner.open(csv_file) as f:
+                        try:
+                            reader = csv.DictReader(
+                                TextIOWrapper(f, encoding='utf-8', errors='replace'),
+                                delimiter='|'
+                            )
+                            # Mostrar columnas del primer archivo para debug
+                            if procesados == 0:
+                                try:
+                                    primera_fila = next(iter(reader))
+                                    log(f'Columnas CSV: {list(primera_fila.keys())}')
+                                    log(f'Primera fila: {dict(primera_fila)}')
+                                    # Procesar esa primera fila también
+                                    row = primera_fila
+                                    procesados += 1
+                                    _procesar_fila(row, precios, usuario_id)
+                                except StopIteration:
+                                    continue
  
-    log(f'CSV procesado: {procesados:,} registros — {matcheados} precios a insertar')
+                            for row in reader:
+                                procesados += 1
+                                _procesar_fila(row, precios, usuario_id)
+ 
+                        except Exception as e:
+                            log(f'Error procesando {csv_file}: {e}')
+                            continue
+ 
+            except Exception as e:
+                log(f'Error con {zip_interno}: {e}')
+                continue
+ 
+    log(f'Total procesados: {procesados:,} registros — {len(precios)} precios a insertar')
     return list(precios.values())
+ 
+def _procesar_fila(row, precios, usuario_id):
+    """Procesa una fila del CSV y la agrega al dict de precios si matchea."""
+    provincia = row.get('id_provincia', '') or row.get('provincia', '')
+    if not provincia_permitida(provincia):
+        return
+ 
+    nombre_prod = row.get('nombre_producto', '') or row.get('producto', '')
+    producto_id = detectar_producto(nombre_prod)
+    if not producto_id:
+        return
+ 
+    nombre_comercio = row.get('comercio_razon_social', '') or row.get('cadena', '')
+    cadena_id = detectar_cadena(nombre_comercio)
+    if not cadena_id:
+        return
+ 
+    try:
+        precio_str = row.get('precio', '0').replace(',', '.')
+        precio = float(precio_str)
+        if precio <= 0:
+            return
+    except (ValueError, TypeError):
+        return
+ 
+    key = (producto_id, cadena_id)
+    if key not in precios or precio < precios[key]['precio']:
+        precios[key] = {
+            'producto_id':  producto_id,
+            'comercio_id':  cadena_id,
+            'usuario_id':   usuario_id,
+            'precio':       precio,
+            'moneda':       MONEDA,
+            'verificado':   True,
+        }
  
 # ── Insertar en Supabase ────────────────────────────────────
 def insertar_precios(precios):
