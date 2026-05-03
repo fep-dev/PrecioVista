@@ -86,19 +86,15 @@ function animarNumero(el, objetivo, duracion = 1200) {
 
 // ── Página de inicio ────────────────────────────────────────
 async function iniciarHome() {
-  const paisId = localStorage.getItem('pv_pais') || 'ar';
-  renderPaises(paisId);
+  const paisId = 'ar'; // Solo Argentina por ahora
+  localStorage.setItem('pv_pais', 'ar');
   renderCadenas(paisId);
   await cargarEstadisticas();
   configurarBuscador();
 }
 
 function renderPaises(paisActivo) {
-  const grid = document.getElementById('countries-grid');
-  if (!grid) return;
-  grid.innerHTML = PAISES.map(p =>
-    renderCountryCard(p, p.id === paisActivo, `seleccionarPais('${p.id}')`)
-  ).join('');
+  // Desactivado — solo Argentina
 }
 
 function seleccionarPais(paisId) {

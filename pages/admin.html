@@ -37,7 +37,7 @@
   </div>
 </nav>
 
-<!-- No autorizado -->
+
 <div id="estado-noauth" style="display:none">
   <div class="empty-state" style="padding:6rem 0">
     <span class="empty-state-icon">🔒</span>
@@ -171,21 +171,51 @@ let todosReportes = [];
 let usuarioBanId  = null;
 let filtroActivo  = '';
 
-document.addEventListener('DOMContentLoaded', () => {
-  // Usar onAuthChange para evitar race condition (mismo patrón que reportar.html)
-  verificarAdmin();
-  onAuthChange(() => verificarAdmin());
+document.addEventListener('DOMContentLoaded', async () => {
+  // Esperar hasta que el cliente Supabase esté inicializado
+  // supabase.js lo inicializa en su propio DOMContentLoaded — pueden competir
+  let db = getClient();
+  let intentos = 0;
+  while (!db && intentos < 20) {
+    await new Promise(r => setTimeout(r, 100));
+    db = getClient();
+    intentos++;
+  }
+  if (!db) { mostrarNoAuth(); return; }
+  await intentarAcceso();
+
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible') await intentarAcceso();
+  });
 });
 
-async function verificarAdmin() {
-  const user = getUsuarioLocal();
-  if (!user || !esAdmin(user)) {
-    document.getElementById('estado-noauth').style.display = '';
-    return;
+async function intentarAcceso() {
+  const db = getClient();
+  if (!db) { mostrarNoAuth(); return; }
+  const { data: { session } } = await db.auth.getSession();
+  if (!session?.user) { mostrarNoAuth(); return; }
+  await verificarAdmin(session.user);
+}
+
+async function verificarAdmin(user) {
+  const db = getClient();
+  if (!db || !user) { mostrarNoAuth(); return; }
+  try {
+    const { data: perfil } = await db.from('usuarios').select('rol').eq('id', user.id).single();
+    const esAdminReal = perfil?.rol === 'admin' || user.email === ADMIN_EMAIL;
+    if (!esAdminReal) { mostrarNoAuth(); return; }
+    document.getElementById('estado-noauth').style.display = 'none';
+    document.getElementById('estado-panel').style.display = '';
+    await Promise.all([cargarUsuarios(), cargarReportes()]);
+    actualizarStats();
+  } catch(e) {
+    mostrarNoAuth();
   }
-  document.getElementById('estado-panel').style.display = '';
-  await Promise.all([cargarUsuarios(), cargarReportes()]);
-  actualizarStats();
+}
+
+function mostrarNoAuth() {
+  document.getElementById('estado-noauth').style.display = '';
+  document.getElementById('estado-panel').style.display = 'none';
 }
 
 async function cargarUsuarios() {

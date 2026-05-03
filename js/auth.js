@@ -281,26 +281,35 @@ function cerrarUbicacion() {
 }
 
 function crearModalUbicacion() {
-  const paisActual = localStorage.getItem('pv_pais') || 'ar';
+  const provActual  = localStorage.getItem('pv_provincia') || '';
+  const ciudadActual = localStorage.getItem('pv_ciudad') || '';
+  const ciudades    = provActual ? getCiudades(provActual) : [];
+
   const html = `
   <div class="modal-overlay" id="modal-ubicacion">
     <div class="modal" style="max-width:520px">
       <button class="modal-close" onclick="cerrarUbicacion()">✕</button>
       <div class="modal-logo">📍</div>
       <h2 class="modal-title">Tu ubicación</h2>
-      <p class="modal-sub">Elegí tu país y provincia para ver precios cercanos</p>
+      <p class="modal-sub">Elegí tu provincia y ciudad para ver precios cercanos</p>
 
       <div class="form-group">
-        <label class="form-label">País</label>
-        <select class="form-input form-select" id="sel-pais" onchange="cargarProvincias()">
-          ${PAISES.map(p => `<option value="${p.id}" ${p.id === paisActual ? 'selected' : ''}>${p.bandera} ${p.nombre}</option>`).join('')}
+        <label class="form-label">Provincia</label>
+        <select class="form-input form-select" id="sel-provincia" onchange="actualizarCiudades()">
+          <option value="">Todas las provincias</option>
+          ${getPais('ar').provincias.map(p =>
+            `<option value="${p}" ${p === provActual ? 'selected' : ''}>${p}</option>`
+          ).join('')}
         </select>
       </div>
 
       <div class="form-group">
-        <label class="form-label">Provincia / Región</label>
-        <select class="form-input form-select" id="sel-provincia">
-          <option value="">Todas las provincias</option>
+        <label class="form-label">Ciudad</label>
+        <select class="form-input form-select" id="sel-ciudad">
+          <option value="">Todas las ciudades</option>
+          ${ciudades.map(c =>
+            `<option value="${c}" ${c === ciudadActual ? 'selected' : ''}>${c}</option>`
+          ).join('')}
         </select>
       </div>
 
@@ -317,25 +326,28 @@ function crearModalUbicacion() {
     if (e.target.id === 'modal-ubicacion') cerrarUbicacion();
   });
   document.getElementById('modal-ubicacion').classList.add('open');
-  cargarProvincias();
+}
+
+function actualizarCiudades() {
+  const provincia = document.getElementById('sel-provincia')?.value || '';
+  const sel       = document.getElementById('sel-ciudad');
+  if (!sel) return;
+  const ciudades  = provincia ? getCiudades(provincia) : [];
+  sel.innerHTML   = '<option value="">Todas las ciudades</option>' +
+    ciudades.map(c => `<option value="${c}">${c}</option>`).join('');
 }
 
 function cargarProvincias() {
-  const paisId   = document.getElementById('sel-pais')?.value || 'ar';
-  const sel      = document.getElementById('sel-provincia');
-  const provActual = localStorage.getItem('pv_provincia') || '';
-  const pais     = getPais(paisId);
-  if (!sel || !pais) return;
-  sel.innerHTML = '<option value="">Todas las provincias</option>' +
-    pais.provincias.map(p => `<option value="${p}" ${p === provActual ? 'selected' : ''}>${p}</option>`).join('');
+  // No necesario — solo Argentina, provincias cargadas directamente en crearModalUbicacion
 }
 
 function guardarUbicacion() {
-  const pais      = document.getElementById('sel-pais')?.value || 'ar';
   const provincia = document.getElementById('sel-provincia')?.value || '';
-  localStorage.setItem('pv_pais', pais);
+  const ciudad    = document.getElementById('sel-ciudad')?.value || '';
+  localStorage.setItem('pv_pais', 'ar');
   localStorage.setItem('pv_provincia', provincia);
-  actualizarNavUbicacion(pais, provincia);
+  localStorage.setItem('pv_ciudad', ciudad);
+  actualizarNavUbicacion('ar', provincia, ciudad);
   cerrarUbicacion();
   mostrarToast('Ubicación guardada ✓', 'success');
   if (typeof recargarResultados === 'function') recargarResultados();
@@ -357,19 +369,20 @@ function detectarUbicacion() {
       else if (lat < -10 && lat > -22 && lng > -81 && lng < -68) pais = 'pe';
       else if (lat < -30 && lat > -35 && lng > -59 && lng < -53) pais = 'uy';
 
-      const selPais = document.getElementById('sel-pais');
-      if (selPais) { selPais.value = pais; cargarProvincias(); }
-      mostrarToast('Ubicación detectada ✓', 'success');
+      const selPais = document.getElementById('sel-provincia');
+      if (selPais) mostrarToast('Ubicación detectada ✓', 'success');
     },
     () => mostrarToast('No se pudo obtener la ubicación', 'error')
   );
 }
 
-function actualizarNavUbicacion(paisId, provincia) {
-  const el  = document.getElementById('nav-location-text');
+function actualizarNavUbicacion(paisId, provincia, ciudad) {
+  const el   = document.getElementById('nav-location-text');
   const pais = getPais(paisId);
   if (!el || !pais) return;
-  el.textContent = provincia ? `${pais.bandera} ${provincia}` : `${pais.bandera} ${pais.nombre}`;
+  if (ciudad)       el.textContent = `${pais.bandera} ${ciudad}`;
+  else if (provincia) el.textContent = `${pais.bandera} ${provincia}`;
+  else              el.textContent = `${pais.bandera} ${pais.nombre}`;
 }
 
 // ── Helpers ─────────────────────────────────────────────────
@@ -407,7 +420,8 @@ document.addEventListener('DOMContentLoaded', () => {
   inicializarAuth();
   const paisId    = localStorage.getItem('pv_pais') || 'ar';
   const provincia = localStorage.getItem('pv_provincia') || '';
-  actualizarNavUbicacion(paisId, provincia);
+  const ciudad    = localStorage.getItem('pv_ciudad') || '';
+  actualizarNavUbicacion(paisId, provincia, ciudad);
 });
 
 // ✓ auth.js — completo

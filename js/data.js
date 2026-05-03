@@ -1,5 +1,5 @@
 // ============================================================
-// PrecioVista — Datos: países, provincias, cadenas
+// PrecioVista — Datos: países, provincias, ciudades, cadenas
 // Copyright © 2026 PrecioVista. CC BY-NC-SA 4.0
 // ============================================================
 
@@ -217,6 +217,113 @@ function getCadenas(paisId) { return CADENAS[paisId] || []; }
 function formatPrecio(precio, simbolo) {
   if (precio >= 1000) return `${simbolo}${precio.toLocaleString('es-AR')}`;
   return `${simbolo}${precio.toFixed(2)}`;
+}
+
+// Ciudades principales por provincia — Argentina
+const CIUDADES = {
+  'Buenos Aires': [
+    'La Plata','Mar del Plata','Quilmes','Lanús','General San Martín',
+    'Lomas de Zamora','Almirante Brown','Florencio Varela','Berazategui',
+    'Tigre','San Isidro','Vicente López','Tres de Febrero','Morón',
+    'Bahía Blanca','Tandil','Pergamino','Junín','Necochea','Olavarría'
+  ],
+  'Ciudad de Buenos Aires': [
+    'Palermo','Caballito','Flores','Belgrano','Villa Urquiza',
+    'San Telmo','Recoleta','Almagro','Balvanera','Boedo',
+    'Villa del Parque','Mataderos','Barracas','Núñez','Colegiales'
+  ],
+  'Catamarca': [
+    'San Fernando del Valle de Catamarca','San Isidro','Recreo',
+    'Tinogasta','Andalgalá','Belén','Santa María','Chumbicha'
+  ],
+  'Chaco': [
+    'Resistencia','Presidencia Roque Sáenz Peña','Villa Ángela',
+    'Charata','Quitilipi','Las Breñas','Fontana','Barranqueras'
+  ],
+  'Chubut': [
+    'Comodoro Rivadavia','Rawson','Trelew','Puerto Madryn',
+    'Esquel','Rada Tilly','Sarmiento','Lago Puelo'
+  ],
+  'Córdoba': [
+    'Córdoba','Villa María','San Francisco','Río Cuarto','Alta Gracia',
+    'Villa Carlos Paz','Río Tercero','Cosquín','Bell Ville','La Falda'
+  ],
+  'Corrientes': [
+    'Corrientes','Goya','Paso de los Libres','Curuzú Cuatiá',
+    'Mercedes','Monte Caseros','Santo Tomé','Esquina'
+  ],
+  'Entre Ríos': [
+    'Paraná','Concordia','Gualeguaychú','Concepción del Uruguay',
+    'Colón','Gualeguay','Victoria','La Paz','Villaguay'
+  ],
+  'Formosa': [
+    'Formosa','Clorinda','Pirané','El Colorado',
+    'Las Lomitas','General Lucio Victorio Mansilla'
+  ],
+  'Jujuy': [
+    'San Salvador de Jujuy','Palpalá','San Pedro de Jujuy',
+    'Libertador General San Martín','Humahuaca','Tilcara'
+  ],
+  'La Pampa': [
+    'Santa Rosa','General Pico','Toay','Eduardo Castex',
+    'Realicó','General Acha','Victorica'
+  ],
+  'La Rioja': [
+    'La Rioja','Chilecito','Aimogasta','Chamical',
+    'Chepes','Vinchina','Nonogasta'
+  ],
+  'Mendoza': [
+    'Mendoza','San Rafael','Godoy Cruz','Luján de Cuyo',
+    'Las Heras','Maipú','Guaymallén','Tunuyán','Malargüe'
+  ],
+  'Misiones': [
+    'Posadas','Oberá','Eldorado','Puerto Iguazú',
+    'Apóstoles','Leandro N. Alem','Jardín América','Aristóbulo del Valle'
+  ],
+  'Neuquén': [
+    'Neuquén','San Martín de los Andes','Cutral Có','Zapala',
+    'Plottier','Centenario','Villa La Angostura','Junín de los Andes'
+  ],
+  'Río Negro': [
+    'Viedma','San Carlos de Bariloche','General Roca','Cipolletti',
+    'Allen','Villa Regina','El Bolsón','Catriel'
+  ],
+  'Salta': [
+    'Salta','San Ramón de la Nueva Orán','Tartagal','Metán',
+    'Rosario de la Frontera','Cafayate','General Güemes','Joaquín V. González'
+  ],
+  'San Juan': [
+    'San Juan','Rivadavia','Santa Lucía','Chimbas',
+    'Pocito','Rawson','Caucete','San Martín'
+  ],
+  'San Luis': [
+    'San Luis','Villa Mercedes','Merlo','Juana Koslay',
+    'La Punta','Concarán','Quines'
+  ],
+  'Santa Cruz': [
+    'Río Gallegos','Caleta Olivia','Pico Truncado','Las Heras',
+    'Puerto Deseado','Gobernador Gregores','El Calafate'
+  ],
+  'Santa Fe': [
+    'Rosario','Santa Fe','Rafaela','Venado Tuerto',
+    'Villa Gobernador Gálvez','Reconquista','Santo Tomé','Esperanza','Casilda'
+  ],
+  'Santiago del Estero': [
+    'Santiago del Estero','La Banda','Termas de Río Hondo',
+    'Añatuya','Frías','Loreto','Nueva Esperanza'
+  ],
+  'Tierra del Fuego': [
+    'Ushuaia','Río Grande','Tolhuin'
+  ],
+  'Tucumán': [
+    'San Miguel de Tucumán','Banda del Río Salí','Yerba Buena',
+    'Tafí Viejo','Alderetes','Aguilares','Concepción','Famayllá'
+  ]
+};
+
+// Obtener ciudades de una provincia
+function getCiudades(provincia) {
+  return CIUDADES[provincia] || [];
 }
 
 // ✓ data.js — completo

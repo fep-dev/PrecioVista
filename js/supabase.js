@@ -5,9 +5,9 @@
 
 // ── Configuración ──────────────────────────────────────────
 // Reemplazá estos valores con los de tu proyecto en supabase.com
-const SUPABASE_URL    = 'https://qcugckvhdclzuvveokmk.supabase.co';
-const SUPABASE_ANON   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjdWdja3ZoZGNsenV2dmVva21rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1OTg5MzQsImV4cCI6MjA5MzE3NDkzNH0.mlC9Ei_rwOE-tdktirKlhRG9h3hWlThdLS2TYRYHqEw';
-const ADMIN_EMAIL     = 'fepaviolo@gmail.com'; // Cambiá por tu email real
+const SUPABASE_URL    = 'https://TU_PROYECTO.supabase.co';
+const SUPABASE_ANON   = 'TU_ANON_KEY';
+const ADMIN_EMAIL     = 'admin@preciovista.com'; // Cambiá por tu email real
 
 // ── Inicialización ──────────────────────────────────────────
 let supabaseClient = null;
@@ -140,18 +140,15 @@ function esAdmin(user) {
 
 // ── PRECIOS ─────────────────────────────────────────────────
 
-async function obtenerPrecios(productoId, paisId, provinciaId) {
+async function obtenerPrecios(productoId, paisId, provinciaId, ciudadId) {
   if (esModoDemo()) {
     return { data: generarPreciosDemo(paisId, productoId), error: null, demo: true };
   }
   const db = getClient();
   try {
-    // CORRECCIÓN 4: filtrar por pais_id y provincia con .eq() sobre una columna
-    // de tabla relacionada no funciona así en Supabase JS v2.
-    // La forma correcta es hacer el join explícito o filtrar los comercios por separado.
-    // Solución: traer los comercios del país primero, luego filtrar precios por esos IDs.
     let comerciosQuery = db.from('comercios').select('id').eq('pais_id', paisId);
     if (provinciaId) comerciosQuery = comerciosQuery.eq('provincia', provinciaId);
+    if (ciudadId)    comerciosQuery = comerciosQuery.eq('ciudad', ciudadId);
     const { data: comercios } = await comerciosQuery;
     const comercioIds = (comercios || []).map(c => c.id);
 
