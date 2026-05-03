@@ -1,0 +1,31 @@
+name: Importar precios SEPA
+
+on:
+  schedule:
+    # Corre todos los días a las 8 AM hora Argentina (UTC-3 = 11:00 UTC)
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+    # También permite correrlo manualmente desde GitHub Actions
+
+jobs:
+  importar-precios:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: pip install requests supabase python-dotenv
+
+      - name: Ejecutar importador de precios
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python scripts/importar_sepa.py
