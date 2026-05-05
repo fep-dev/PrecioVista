@@ -1,62 +1,112 @@
 # ============================================================
 # config_sepa.py — Configuración del importador SEPA
 # ============================================================
-# Este archivo es el único que necesitás modificar para:
-# - Agregar nuevos productos
-# - Agregar nuevas cadenas
-# - Cambiar qué provincias importar
+# CÓMO MODIFICAR:
+# - Para agregar un producto: agregá una entrada en PRODUCTOS
+#   con las palabras clave que aparecen en productos_descripcion del SEPA
+# - Para agregar una cadena: agregá una entrada en CADENAS
+#   con el nombre que usa el campo comercio_bandera_nombre en el SEPA
+# - Para cambiar provincias: modificá PROVINCIAS_FILTRO
+#   (dejarlo vacío [] importa todo el país)
 # ============================================================
 
-# ── Productos a importar ────────────────────────────────────
-# Formato: 'id_en_preciovista': ['palabra_clave_1', 'palabra_clave_2']
-# El importador busca estas palabras en el nombre del producto del SEPA
-# Si el nombre contiene CUALQUIERA de las palabras clave, se importa
+# ── Productos ───────────────────────────────────────────────
+# Clave: id del producto en PrecioVista (debe existir en tabla productos)
+# Valor: lista de palabras clave a buscar en productos_descripcion del SEPA
+# Las keywords se normalizan (sin tildes, minúsculas) antes de comparar
 
 PRODUCTOS = {
-    'leche_1l':     ['leche entera 1l', 'leche entera 1 l', 'leche entera 1lt'],
-    'pan_lactal':   ['pan lactal', 'pan de miga'],
-    'aceite_900ml': ['aceite girasol 900', 'aceite de girasol 900'],
-    'arroz_1kg':    ['arroz largo fino 1kg', 'arroz largo 1 kg', 'arroz largo 1kg'],
-    'azucar_1kg':   ['azucar comun 1kg', 'azúcar común 1kg', 'azucar 1 kg'],
-    'coca_2l':      ['coca-cola 2.25', 'coca cola 2.25', 'coca-cola 2,25'],
-    'yerba_500g':   ['yerba mate 500g', 'yerba mate 500 g'],
-    'harina_1kg':   ['harina 0000 1kg', 'harina 000 1kg', 'harina comun 1kg'],
-    'fideos_500g':  ['fideos tallarin 500', 'fideos tallarín 500', 'fideos 500g'],
-    'huevos_12':    ['huevos blancos x12', 'huevos x 12', 'huevos docena'],
+    'leche_1l': [
+        'leche entera 1l',
+        'leche entera 1 l',
+        'leche entera 1lt',
+        'leche entera 1 lt',
+        'leche entera sachet 1',
+    ],
+    'pan_lactal': [
+        'pan lactal',
+        'pan de miga',
+        'pan blanco lactal',
+    ],
+    'aceite_900ml': [
+        'aceite girasol 900',
+        'aceite de girasol 900',
+        'aceite girasol 0.9',
+    ],
+    'arroz_1kg': [
+        'arroz largo fino 1kg',
+        'arroz largo fino 1 kg',
+        'arroz largo 1kg',
+        'arroz largo 1 kg',
+    ],
+    'azucar_1kg': [
+        'azucar comun 1kg',
+        'azucar comun 1 kg',
+        'azucar 1kg',
+        'azucar 1 kg',
+    ],
+    'coca_2l': [
+        'coca-cola 2.25',
+        'coca cola 2.25',
+        'coca-cola 2,25',
+        'cola 2.25l',
+    ],
+    'yerba_500g': [
+        'yerba mate 500g',
+        'yerba mate 500 g',
+        'yerba mate 0.5kg',
+    ],
+    'harina_1kg': [
+        'harina 0000 1kg',
+        'harina 0000 1 kg',
+        'harina 000 1kg',
+        'harina comun 1kg',
+    ],
+    'fideos_500g': [
+        'fideos tallarin 500',
+        'fideos tallarines 500',
+        'fideos 500g',
+        'fideos 500 g',
+    ],
+    'huevos_12': [
+        'huevos blancos x12',
+        'huevos x12',
+        'huevos x 12',
+        'huevos docena',
+        'huevos blancos docena',
+    ],
 }
 
-# ── Cadenas a importar ──────────────────────────────────────
-# Formato: 'id_en_preciovista': ['nombre_sepa_1', 'nombre_sepa_2']
-# El SEPA usa nombres de cadena que pueden variar — agregá variantes si no matchea
+# ── Cadenas ─────────────────────────────────────────────────
+# Clave: id de la cadena en PrecioVista (debe existir en tabla comercios)
+# Valor: lista de nombres a buscar en comercio_bandera_nombre del SEPA
+# IMPORTANTE: usar nombres exactos como aparecen en el SEPA
+# Se usan word boundaries — 'dia' NO matchea 'diario'
 
 CADENAS = {
     'carrefour_ar': ['carrefour'],
     'coto_ar':      ['coto'],
     'disco_ar':     ['disco'],
-    'dia_ar':       ['dia', 'día'],
+    'dia_ar':       ['dia', 'supermercados dia'],
     'jumbo_ar':     ['jumbo'],
-    'walmart_ar':   ['walmart'],           # Solo walmart — changomas es marca separada
-    'chango_ar':    ['changomas', 'changomás', 'chango mas', 'chango más'],
-    'vea_ar':       ['vea'],
+    'walmart_ar':   ['walmart'],
+    'chango_ar':    ['changomas', 'chango mas', 'chango+'],
+    'vea_ar':       ['vea', 'supermercados vea'],
 }
 
-# ── Provincias a importar ───────────────────────────────────
-# Dejá vacío [] para importar todas las provincias
-# O listá solo las que querés: ['Buenos Aires', 'Córdoba', 'Santa Fe']
-# Usar [] al principio para no sobrecargar Supabase
-
+# ── Provincias a importar ────────────────────────────────────
+# Dejá [] para importar todo el país
+# Las comparaciones ignoran tildes automáticamente
 PROVINCIAS_FILTRO = [
-    'Ciudad Autonoma de Buenos Aires',  # SEPA puede usar esta variante
-    'Ciudad de Buenos Aires',           # o esta variante
+    'Ciudad de Buenos Aires',
     'Buenos Aires',
     'Cordoba',
     'Santa Fe',
     'Mendoza',
 ]
 
-# ── URLs del SEPA por día de la semana ──────────────────────
-# No modificar — se calculan automáticamente en el script
-
+# ── URLs del SEPA por día ────────────────────────────────────
+# No modificar — URLs oficiales de datos.produccion.gob.ar
 SEPA_URLS = {
     0: 'https://datos.produccion.gob.ar/dataset/6f47ec76-d1ce-4e34-a7e1-621fe9b1d0b5/resource/0a9069a9-06e8-4f98-874d-da5578693290/download/sepa_lunes.zip',
     1: 'https://datos.produccion.gob.ar/dataset/6f47ec76-d1ce-4e34-a7e1-621fe9b1d0b5/resource/9dc06241-cc83-44f4-8e25-c9b1636b8bc8/download/sepa_martes.zip',
@@ -67,9 +117,5 @@ SEPA_URLS = {
     6: 'https://datos.produccion.gob.ar/dataset/6f47ec76-d1ce-4e34-a7e1-621fe9b1d0b5/resource/f8e75128-515a-436e-bf8d-5c63a62f2005/download/sepa_domingo.zip',
 }
 
-# ── Moneda ──────────────────────────────────────────────────
+# ── Moneda ───────────────────────────────────────────────────
 MONEDA = 'ARS'
-
-# ── Límite de registros por producto por cadena ─────────────
-# Para no sobrecargar Supabase — importa solo el precio más reciente
-MAX_REGISTROS_POR_COMBO = 1
