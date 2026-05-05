@@ -340,8 +340,20 @@ def procesar_zip(zip_path, usuario_id):
 
                 with zipfile.ZipFile(datos, 'r') as zf_inner:
                     if es_debug:
-                        log(f'Primer ZIP: {nombre_zip}')
-                        log(f'Archivos: {zf_inner.namelist()}')
+                        log(f'=== DIAGNÓSTICO ZIP INTERNO ===')
+                        log(f'Nombre ZIP: {nombre_zip}')
+                        todos = zf_inner.namelist()
+                        log(f'TODOS los archivos ({len(todos)}): {todos}')
+                        # Leer primeras 3 líneas de CADA archivo
+                        for arch in todos:
+                            try:
+                                with zf_inner.open(arch) as f:
+                                    primeras = f.read(500).decode('utf-8', errors='replace')
+                                log(f'--- {arch} ---')
+                                log(f'{primeras[:300]}')
+                            except Exception as e:
+                                log(f'Error leyendo {arch}: {e}')
+                        log(f'=== FIN DIAGNÓSTICO ===')
 
                     banderas   = leer_banderas(zf_inner)
                     sucursales = leer_sucursales(zf_inner)
